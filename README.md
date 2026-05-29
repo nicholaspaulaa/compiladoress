@@ -1,2 +1,57 @@
-# compiladoress
-UM TRABALHO LEGAL DE 3 PESSOAS
+# Simples Editor
+
+IDE web para escrever, compilar e executar programas na linguagem **SIMPLES** (disciplina de Compiladores — IFSULDEMINAS, Poços de Caldas).
+
+O ambiente oferece três painéis: editor com syntax highlighting, visualização do NASM gerado pelo compilador `simplesc` e terminal interativo (`leia` / `escreva`) via WebSocket.
+
+**Repositório:** [github.com/nicholaspaulaa/compiladoress](https://github.com/nicholaspaulaa/compiladoress)
+
+## Documentação
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| [prd-simples-online.md](./prd-simples-online.md) | PRD completo — requisitos, arquitetura, API, segurança |
+| [SPRINTS.md](./SPRINTS.md) | Plano de 6 sprints e entregáveis |
+| [PROGRESS.md](./PROGRESS.md) | Checklist das issues do GitHub |
+
+## Stack (resumo)
+
+| Camada | Tecnologias |
+|--------|-------------|
+| Frontend | React, TypeScript, TanStack Start, Monaco Editor, xterm.js, Tailwind, Supabase Auth |
+| Backend | Python 3.11+, Flask, flask-sock, Docker SDK |
+| Compilador | `simplesc` (C99) → NASM x86-32 → `nasm` + `ld` (i386) |
+| Infra | Docker Compose, Nginx, Supabase |
+
+> O código da aplicação (frontend, backend, compilador) será adicionado ao longo dos sprints. Hoje o repo contém documentação e o rastreamento de tarefas no GitHub.
+
+## Pré-requisitos
+
+- [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/) e Docker Compose v2
+- Conta no repositório GitHub
+
+## Como clonar
+
+```bash
+git clone https://github.com/nicholaspaulaa/compiladoress.git
+cd compiladoress
+```
+
+Configure variáveis de ambiente quando o backend existir (copie `.env.example` → `.env` — arquivo não versionado).
+
+## Desenvolvimento local
+
+Instruções de build e `docker compose up` serão documentadas aqui conforme as pastas `frontend/`, `backend/` e `compiler/` forem criadas nos sprints.
+
+Acompanhe o [SPRINTS.md](./SPRINTS.md) — **Sprint 1** cobre infraestrutura mínima e autenticação.
+
+## Equipe
+
+Eduardo Tenório Nunes
+Érica de Souza Guerzoni Ribeiro
+Nicholas Emanuell Lima de Paula
+
+## Licença
+
+Uso acadêmico — disciplina de Compiladores.
