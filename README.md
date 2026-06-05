@@ -13,6 +13,7 @@ O ambiente oferece três painéis: editor com syntax highlighting, visualizaçã
 | [prd-simples-online.md](./prd-simples-online.md) | PRD completo — requisitos, arquitetura, API, segurança |
 | [SPRINTS.md](./SPRINTS.md) | Plano de 6 sprints e entregáveis |
 | [PROGRESS.md](./PROGRESS.md) | Checklist das issues do GitHub |
+| [docs/SUPABASE.md](./docs/SUPABASE.md) | Criar projeto Supabase e variáveis `.env` |
 
 ## Stack (resumo)
 
@@ -38,7 +39,7 @@ git clone https://github.com/nicholaspaulaa/compiladoress.git
 cd compiladoress
 ```
 
-Configure variáveis de ambiente quando o backend existir (copie `.env.example` → `.env` — arquivo não versionado).
+Copie `.env.example` → `.env` e configure o Supabase ([docs/SUPABASE.md](./docs/SUPABASE.md)).
 
 ## Desenvolvimento local
 
