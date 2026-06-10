@@ -43,9 +43,37 @@ Copie `.env.example` → `.env` e configure o Supabase ([docs/SUPABASE.md](./doc
 
 ## Desenvolvimento local
 
-Instruções de build e `docker compose up` serão documentadas aqui conforme as pastas `frontend/`, `backend/` e `compiler/` forem criadas nos sprints.
+```bash
+# Subir todos os serviços
+docker compose up -d --build
+```
+
+### Smoke test (health check)
+
+Após `docker compose up`, valide que o backend está saudável:
+
+```bash
+curl http://localhost:5000/api/health
+```
+
+Resposta esperada (HTTP 200):
+
+```json
+{"status":"ok","service":"backend","components":{"supabase":{"status":"ok"}}}
+```
+
+Caso o Supabase não esteja configurado, `supabase.status` será `"unconfigured"` — o endpoint ainda retorna 200.
 
 Acompanhe o [SPRINTS.md](./SPRINTS.md) — **Sprint 1** cobre infraestrutura mínima e autenticação.
+
+## Convenção de branches e revisão
+
+| Regra | Descrição |
+|-------|-----------|
+| Branch naming | `feat/<descricao>`, `fix/<descricao>`, `docs/<descricao>` |
+| Pull Requests | Todo PR deve referenciar a issue relacionada (`Closes #N` ou `Refs #N`) |
+| Revisão | Pelo menos 1 aprovação de outro membro da equipe antes do merge |
+| Template | Usar o template em [.github/pull_request_template.md](./.github/pull_request_template.md) |
 
 ## Equipe
 

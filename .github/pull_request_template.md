@@ -1,17 +1,22 @@
-## O que muda?
-<!-- Resumo de 1-2 frases -->
+## Descrição
 
-## Por quê?
-<!-- Contexto, motivação, link para issue: Closes #N -->
+<!-- Descreva o que este PR faz e por quê. -->
 
-## Como testar?
-<!-- Passos para o reviewer reproduzir -->
+## Issue relacionada
 
-## Screenshots / GIFs
-<!-- Para mudanças de UI -->
+<!-- Ex: Closes #42, Refs #15 -->
+
+## Tipo de mudança
+
+- [ ] feat (nova funcionalidade)
+- [ ] fix (correção de bug)
+- [ ] docs (documentação)
+- [ ] refactor (refatoração sem mudança de comportamento)
+- [ ] infra (Docker, CI/CD, configuração)
 
 ## Checklist
-- [ ] Testes passando localmente
-- [ ] Atualizei o README se necessário
-- [ ] Não introduzi breaking changes
-- [ ] CI verde
+
+- [ ] Testei localmente (`docker compose up --build`)
+- [ ] O health check retorna 200 (`curl http://localhost:5000/api/health`)
+- [ ] Referencio a issue com `Closes #N` ou `Refs #N`
+- [ ] O PR está pronto para revisão por outro membro da equipe
