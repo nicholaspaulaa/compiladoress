@@ -14,6 +14,8 @@ O ambiente oferece três painéis: editor com syntax highlighting, visualizaçã
 | [SPRINTS.md](./SPRINTS.md) | Plano de 6 sprints e entregáveis |
 | [PROGRESS.md](./PROGRESS.md) | Checklist das issues do GitHub |
 | [docs/SUPABASE.md](./docs/SUPABASE.md) | Criar projeto Supabase e variáveis `.env` |
+| [compiler/](./compiler/) | Compilador `simplesc` (C) — fork em [simples-compiler](https://github.com/nicholaspaulaa/simples-compiler) |
+| [compiler/UPSTREAM.md](./compiler/UPSTREAM.md) | Como sincronizar o fork com esta pasta |
 
 ## Stack (resumo)
 
@@ -24,7 +26,7 @@ O ambiente oferece três painéis: editor com syntax highlighting, visualizaçã
 | Compilador | `simplesc` (C99) → NASM x86-32 → `nasm` + `ld` (i386) |
 | Infra | Docker Compose, Nginx, Supabase |
 
-> O código da aplicação (frontend, backend, compilador) será adicionado ao longo dos sprints. Hoje o repo contém documentação e o rastreamento de tarefas no GitHub.
+> O frontend e backend evoluem por sprint; o compilador vive em [`compiler/`](./compiler/) (cópia do fork [`simples-compiler`](https://github.com/nicholaspaulaa/simples-compiler)).
 
 ## Pré-requisitos
 
