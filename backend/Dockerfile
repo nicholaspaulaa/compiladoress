@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY config.py auth.py app.py .
+COPY config.py auth.py compile.py app.py .
 
 EXPOSE 5000
 
