@@ -1,6 +1,7 @@
-from flask import Flask, g, jsonify
+from flask import Flask, g, jsonify, request
 
 from auth import verify_jwt
+from compile import compile_code
 from config import Config
 
 app = Flask(__name__)
@@ -32,6 +33,26 @@ def auth_verify():
             "email": g.user_email,
         }
     )
+
+
+@app.route("/api/compile", methods=["POST"])
+@verify_jwt
+def compile_endpoint():
+    """Compila codigo SIMPLES e retorna NASM ou erros estruturados (PRD §9.1, RF05)."""
+    body = request.get_json(silent=True)
+    if body is None:
+        return jsonify({"error": "bad_request", "message": "Corpo JSON obrigatorio"}), 400
+
+    code = body.get("code")
+    if not code or not isinstance(code, str) or not code.strip():
+        return jsonify({"error": "bad_request", "message": "Campo 'code' obrigatorio e nao vazio"}), 400
+
+    result = compile_code(code.strip())
+
+    if result.get("success"):
+        return jsonify({"asm": result["asm"]}), 200
+
+    return jsonify({"errors": result["errors"]}), 422
 
 
 if __name__ == "__main__":
