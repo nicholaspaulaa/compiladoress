@@ -1,3 +1,4 @@
+#define __USE_MINGW_ANSI_STDIO 1
 #include "semantic.h"
 
 #include <stdio.h>
@@ -399,7 +400,7 @@ static bool analyze_call(
         snprintf(
             message,
             sizeof(message),
-            "Procedimento '%s' espera %zu argumentos, mas recebeu %zu.",
+            "Procedimento '%s' espera %u argumentos, mas recebeu %u.",
             call->name,
             signature->parameter_count,
             call->argument_count);
@@ -421,8 +422,8 @@ static bool analyze_call(
                         message,
                         sizeof(message),
                         parameter->type == AST_TYPE_STRING
-                            ? "Argumento %zu de '%s' deve ser uma variavel string nomeada."
-                            : "Argumento %zu de '%s' deve ser uma variavel agregada nomeada.",
+                            ? "Argumento %u de '%s' deve ser uma variavel string nomeada."
+                            : "Argumento %u de '%s' deve ser uma variavel agregada nomeada.",
                         index + 1,
                         call->name);
                     return semantic_fail_expression(call->arguments[index], error, message);
@@ -448,7 +449,7 @@ static bool analyze_call(
                     snprintf(
                         message,
                         sizeof(message),
-                        "Argumento %zu de '%s' deve ter tipo '%s'.",
+                        "Argumento %u de '%s' deve ter tipo '%s'.",
                         index + 1,
                         call->name,
                         semantic_type_name(parameter->type));
@@ -459,7 +460,7 @@ static bool analyze_call(
                     snprintf(
                         message,
                         sizeof(message),
-                        "Argumento %zu de '%s' deve ter %zu dimensao(oes).",
+                        "Argumento %u de '%s' deve ter %u dimensao(oes).",
                         index + 1,
                         call->name,
                         parameter->dimension_count);
@@ -470,7 +471,7 @@ static bool analyze_call(
                     snprintf(
                         message,
                         sizeof(message),
-                        "Argumento %zu de '%s' requer capacidade minima %zu, mas recebeu %zu.",
+                        "Argumento %u de '%s' requer capacidade minima %u, mas recebeu %u.",
                         index + 1,
                         call->name,
                         parameter->capacity,
@@ -484,7 +485,7 @@ static bool analyze_call(
                     snprintf(
                         message,
                         sizeof(message),
-                        "Argumento %zu de '%s' deve ser matriz compativel com [%zu][%zu].",
+                        "Argumento %u de '%s' deve ser matriz compativel com [%u][%u].",
                         index + 1,
                         call->name,
                         parameter->capacity / parameter->row_capacity,
@@ -504,7 +505,7 @@ static bool analyze_call(
                     snprintf(
                         message,
                         sizeof(message),
-                        "Argumento %zu de '%s' deve ser uma expressao string compativel.",
+                        "Argumento %u de '%s' deve ser uma expressao string compativel.",
                         index + 1,
                         call->name);
                     return semantic_fail_expression(call->arguments[index], error, message);
@@ -514,7 +515,7 @@ static bool analyze_call(
                     snprintf(
                         message,
                         sizeof(message),
-                        "Argumento %zu de '%s' excede capacidade %zu.",
+                        "Argumento %u de '%s' excede capacidade %u.",
                         index + 1,
                         call->name,
                         parameter->capacity);
@@ -536,7 +537,7 @@ static bool analyze_call(
                 snprintf(
                     message,
                     sizeof(message),
-                    "Argumento %zu de '%s' deve ser uma variavel vetorial nomeada.",
+                    "Argumento %u de '%s' deve ser uma variavel vetorial nomeada.",
                     index + 1,
                     call->name);
                 return semantic_fail_expression(call->arguments[index], error, message);
@@ -546,7 +547,7 @@ static bool analyze_call(
                 snprintf(
                     message,
                     sizeof(message),
-                    "Argumento %zu de '%s' deve ter tipo '%s'.",
+                    "Argumento %u de '%s' deve ter tipo '%s'.",
                     index + 1,
                     call->name,
                     semantic_type_name(parameter->type));
@@ -557,7 +558,7 @@ static bool analyze_call(
                 snprintf(
                     message,
                     sizeof(message),
-                    "Argumento %zu de '%s' excede capacidade %zu.",
+                    "Argumento %u de '%s' excede capacidade %u.",
                     index + 1,
                     call->name,
                     parameter->capacity);
@@ -579,7 +580,7 @@ static bool analyze_call(
             snprintf(
                 message,
                 sizeof(message),
-                "Argumento %zu de '%s' espera tipo '%s', mas recebeu '%s'.",
+                "Argumento %u de '%s' espera tipo '%s', mas recebeu '%s'.",
                 index + 1,
                 call->name,
                 semantic_type_name(parameter->type),
@@ -872,7 +873,7 @@ static bool analyze_assignment_command(const ASTAssignmentCommand *assignment, c
             snprintf(
                 message,
                 sizeof(message),
-                "Expressao string excede capacidade %zu de '%s'.",
+                "Expressao string excede capacidade %u de '%s'.",
                 variable_capacity,
                 target_name);
             return semantic_fail_expression(assignment->expression, error, message);
@@ -953,7 +954,7 @@ static bool analyze_return_command(const ASTReturnCommand *command, const Semant
             snprintf(
                 message,
                 sizeof(message),
-                "Expressao string excede capacidade %zu de retorno de '%s'.",
+                "Expressao string excede capacidade %u de retorno de '%s'.",
                 ctx->current_procedure->return_capacity,
                 ctx->current_procedure->name);
             return semantic_fail_expression(command->expression, error, message);

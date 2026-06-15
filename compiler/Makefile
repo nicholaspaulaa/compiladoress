@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -std=c99 -Wall -Wextra -Werror -Isrc -Ithird_party/unity/src
+CFLAGS := -std=c99 -Wall -Wextra -Werror -Isrc -Ithird_party/unity/src -D__USE_MINGW_ANSI_STDIO
 BUILD_DIR := build
 UNITY_SRC := third_party/unity/src/unity.c
 TOKEN_TEST_BIN := $(BUILD_DIR)/test_token

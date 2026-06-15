@@ -1,3 +1,4 @@
+#define __USE_MINGW_ANSI_STDIO 1
 #include "codegen.h"
 #include "error.h"
 
@@ -247,7 +248,7 @@ static bool for_loop_temp_name_equals(const SizeList *for_loop_ids, const char *
     }
 
     for (index = 0; index < for_loop_ids->count; ++index) {
-        written = snprintf(expected, sizeof(expected), "%s%zu", prefix, for_loop_ids->items[index]);
+        written = snprintf(expected, sizeof(expected), "%s%u", prefix, for_loop_ids->items[index]);
         if (written < 0 || (size_t)written >= sizeof(expected)) {
             return false;
         }
@@ -567,7 +568,7 @@ static bool generate_load_name(CodegenContext *context, const char *name) {
             if (strcmp(context->parameters[i].name, name) == 0) {
                 return builder_appendf(
                     context->builder,
-                    "    mov eax, dword [ebp+%zu]\n",
+                    "    mov eax, dword [ebp+%u]\n",
                     parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, i));
             }
         }
@@ -576,7 +577,7 @@ static bool generate_load_name(CodegenContext *context, const char *name) {
     if (context->proc_locals != NULL) {
         for (i = 0; i < context->proc_local_count; i++) {
             if (strcmp(context->proc_locals[i].name, name) == 0) {
-                return builder_appendf(context->builder, "    mov eax, dword [ebp-%zu]\n",
+                return builder_appendf(context->builder, "    mov eax, dword [ebp-%u]\n",
                                        local_declaration_frame_offset(context->proc_locals, i));
             }
         }
@@ -593,7 +594,7 @@ static bool generate_store_eax_to_name(CodegenContext *context, const char *name
             if (strcmp(context->parameters[i].name, name) == 0) {
                 return builder_appendf(
                     context->builder,
-                    "    mov dword [ebp+%zu], eax\n",
+                    "    mov dword [ebp+%u], eax\n",
                     parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, i));
             }
         }
@@ -602,7 +603,7 @@ static bool generate_store_eax_to_name(CodegenContext *context, const char *name
     if (context->proc_locals != NULL) {
         for (i = 0; i < context->proc_local_count; i++) {
             if (strcmp(context->proc_locals[i].name, name) == 0) {
-                return builder_appendf(context->builder, "    mov dword [ebp-%zu], eax\n",
+                return builder_appendf(context->builder, "    mov dword [ebp-%u], eax\n",
                                        local_declaration_frame_offset(context->proc_locals, i));
             }
         }
@@ -619,7 +620,7 @@ static bool generate_store_int_to_name(CodegenContext *context, const char *name
             if (strcmp(context->parameters[i].name, name) == 0) {
                 return builder_appendf(
                     context->builder,
-                    "    mov dword [ebp+%zu], %d\n",
+                    "    mov dword [ebp+%u], %d\n",
                     parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, i),
                     value);
             }
@@ -629,7 +630,7 @@ static bool generate_store_int_to_name(CodegenContext *context, const char *name
     if (context->proc_locals != NULL) {
         for (i = 0; i < context->proc_local_count; i++) {
             if (strcmp(context->proc_locals[i].name, name) == 0) {
-                return builder_appendf(context->builder, "    mov dword [ebp-%zu], %d\n",
+                return builder_appendf(context->builder, "    mov dword [ebp-%u], %d\n",
                                        local_declaration_frame_offset(context->proc_locals, i), value);
             }
         }
@@ -1096,7 +1097,7 @@ static bool generate_linearized_index(
                generate_expression(context, access->index2, error) &&
                builder_append(context->builder, "    mov ebx, eax\n") &&
                builder_append(context->builder, "    pop eax\n") &&
-               builder_appendf(context->builder, "    imul eax, %zu\n", row_capacity) &&
+               builder_appendf(context->builder, "    imul eax, %u\n", row_capacity) &&
                builder_append(context->builder, "    add eax, ebx\n");
     }
 
@@ -1913,7 +1914,7 @@ static bool emit_string_literal_declarations(StringBuilder *builder, const Strin
     size_t index;
 
     for (index = 0; index < list->count; ++index) {
-        if (!builder_appendf(builder, "_strlit_%zu db ", list->items[index].label_id) ||
+        if (!builder_appendf(builder, "_strlit_%u db ", list->items[index].label_id) ||
             !builder_append_string_literal_bytes(builder, list->items[index].expression->string_value) ||
             !builder_append(builder, "\n")) {
             return false;
@@ -1927,7 +1928,7 @@ static bool emit_string_return_temp_declarations(StringBuilder *builder, const S
     size_t index;
 
     for (index = 0; index < list->count; ++index) {
-        if (!builder_appendf(builder, "_retstr_%zu times %zu db 0\n", list->items[index].label_id, list->items[index].capacity)) {
+        if (!builder_appendf(builder, "_retstr_%u times %u db 0\n", list->items[index].label_id, list->items[index].capacity)) {
             return false;
         }
     }
@@ -1955,7 +1956,7 @@ static bool emit_float_literal_declarations(StringBuilder *builder, const FloatL
             literal[length + 2] = '\0';
         }
 
-        if (!builder_appendf(builder, "_flt_%zu dq %s\n", list->items[index].label_id, literal)) {
+        if (!builder_appendf(builder, "_flt_%u dq %s\n", list->items[index].label_id, literal)) {
             return false;
         }
     }
@@ -1969,7 +1970,7 @@ static bool generate_string_literal_address(CodegenContext *context, const ASTEx
     if (context->string_literals != NULL) {
         for (index = 0; index < context->string_literals->count; ++index) {
             if (context->string_literals->items[index].expression == expression) {
-                return builder_appendf(context->builder, "    mov eax, _strlit_%zu\n", context->string_literals->items[index].label_id);
+                return builder_appendf(context->builder, "    mov eax, _strlit_%u\n", context->string_literals->items[index].label_id);
             }
         }
     }
@@ -1987,7 +1988,7 @@ static bool generate_float_literal_load(CodegenContext *context, const ASTExpres
     if (context->float_literals != NULL) {
         for (index = 0; index < context->float_literals->count; ++index) {
             if (context->float_literals->items[index].expression == expression) {
-                return builder_appendf(context->builder, "    fld qword [_flt_%zu]\n", context->float_literals->items[index].label_id);
+                return builder_appendf(context->builder, "    fld qword [_flt_%u]\n", context->float_literals->items[index].label_id);
             }
         }
     }
@@ -2018,7 +2019,7 @@ static bool generate_float_load_from_name(CodegenContext *context, const char *n
     if (parameter != NULL && parameter->type == AST_TYPE_FLUTUANTE && parameter->storage == AST_STORAGE_SCALAR) {
         return builder_appendf(
             context->builder,
-            "    fld qword [ebp+%zu]\n",
+            "    fld qword [ebp+%u]\n",
             parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index));
     }
 
@@ -2026,7 +2027,7 @@ static bool generate_float_load_from_name(CodegenContext *context, const char *n
     if (local_offset > 0 &&
         find_context_variable_type(
             NULL, 0, context->proc_locals, context->proc_local_count, context->program, name) == AST_TYPE_FLUTUANTE) {
-        return builder_appendf(context->builder, "    fld qword [ebp-%zu]\n", local_offset);
+        return builder_appendf(context->builder, "    fld qword [ebp-%u]\n", local_offset);
     }
 
     return builder_append(context->builder, "    fld qword [") &&
@@ -2043,7 +2044,7 @@ static bool generate_float_store_to_name(CodegenContext *context, const char *na
     if (parameter != NULL && parameter->type == AST_TYPE_FLUTUANTE && parameter->storage == AST_STORAGE_SCALAR) {
         return builder_appendf(
             context->builder,
-            "    fstp qword [ebp+%zu]\n",
+            "    fstp qword [ebp+%u]\n",
             parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index));
     }
 
@@ -2051,7 +2052,7 @@ static bool generate_float_store_to_name(CodegenContext *context, const char *na
     if (local_offset > 0 &&
         find_context_variable_type(
             NULL, 0, context->proc_locals, context->proc_local_count, context->program, name) == AST_TYPE_FLUTUANTE) {
-        return builder_appendf(context->builder, "    fstp qword [ebp-%zu]\n", local_offset);
+        return builder_appendf(context->builder, "    fstp qword [ebp-%u]\n", local_offset);
     }
 
     return builder_append(context->builder, "    fstp qword [") &&
@@ -2084,7 +2085,7 @@ static bool generate_float_index_load(CodegenContext *context, const ASTIndexedA
                builder_append(context->builder, "    lea edx, [ebp + eax]\n") &&
                builder_appendf(
                    context->builder,
-                   "    fld qword [edx + %zu]\n",
+                   "    fld qword [edx + %u]\n",
                    parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index));
     }
 
@@ -2095,7 +2096,7 @@ static bool generate_float_index_load(CodegenContext *context, const ASTIndexedA
             return generate_linearized_index(context, access, error) &&
                    builder_append(context->builder, "    imul eax, 8\n") &&
                    builder_append(context->builder, "    neg eax\n") &&
-                   builder_appendf(context->builder, "    lea edx, [ebp + eax - %zu]\n", base_offset) &&
+                   builder_appendf(context->builder, "    lea edx, [ebp + eax - %u]\n", base_offset) &&
                    builder_append(context->builder, "    fld qword [edx]\n");
         }
     }
@@ -2133,7 +2134,7 @@ static bool generate_float_index_store(CodegenContext *context, const ASTIndexed
                builder_append(context->builder, "    lea edx, [ebp + eax]\n") &&
                builder_appendf(
                    context->builder,
-                   "    fstp qword [edx + %zu]\n",
+                   "    fstp qword [edx + %u]\n",
                    parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index));
     }
 
@@ -2144,7 +2145,7 @@ static bool generate_float_index_store(CodegenContext *context, const ASTIndexed
             return generate_linearized_index(context, access, error) &&
                    builder_append(context->builder, "    imul eax, 8\n") &&
                    builder_append(context->builder, "    neg eax\n") &&
-                   builder_appendf(context->builder, "    lea edx, [ebp + eax - %zu]\n", base_offset) &&
+                   builder_appendf(context->builder, "    lea edx, [ebp + eax - %u]\n", base_offset) &&
                    builder_append(context->builder, "    fstp qword [edx]\n");
         }
     }
@@ -2170,7 +2171,7 @@ static bool generate_string_literal_copy(
 
         if (!builder_appendf(
                 builder,
-                "    mov edx, dword [ebp+%zu]\n",
+                "    mov edx, dword [ebp+%u]\n",
                 parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index))) {
             return false;
         }
@@ -2186,14 +2187,14 @@ static bool generate_string_literal_copy(
         }
 
         for (i = 1; i < len; i++) {
-            if (!builder_appendf(builder, "    mov byte [edx+%zu], ", i) ||
+            if (!builder_appendf(builder, "    mov byte [edx+%u], ", i) ||
                 !builder_append_nasm_byte_literal(builder, (unsigned char)literal[i]) ||
                 !builder_append(builder, "\n")) {
                 return false;
             }
         }
 
-        return builder_appendf(builder, "    mov byte [edx+%zu], 0\n", len);
+        return builder_appendf(builder, "    mov byte [edx+%u], 0\n", len);
     }
 
     /* Local string targets: emit frame-based byte stores. */
@@ -2204,23 +2205,23 @@ static bool generate_string_literal_copy(
                 len = (literal != NULL) ? strlen(literal) : 0;
 
                 if (len == 0) {
-                    return builder_appendf(builder, "    mov byte [ebp-%zu], 0\n", base_offset);
+                    return builder_appendf(builder, "    mov byte [ebp-%u], 0\n", base_offset);
                 }
 
                 /* byte 0 at [ebp-base_offset], byte j at [ebp-(base_offset-j)] */
-                if (!builder_appendf(builder, "    mov byte [ebp-%zu], ", base_offset) ||
+                if (!builder_appendf(builder, "    mov byte [ebp-%u], ", base_offset) ||
                     !builder_append_nasm_byte_literal(builder, (unsigned char)literal[0]) ||
                     !builder_append(builder, "\n")) {
                     return false;
                 }
                 for (j = 1; j < len; j++) {
-                    if (!builder_appendf(builder, "    mov byte [ebp-%zu], ", base_offset - j) ||
+                    if (!builder_appendf(builder, "    mov byte [ebp-%u], ", base_offset - j) ||
                         !builder_append_nasm_byte_literal(builder, (unsigned char)literal[j]) ||
                         !builder_append(builder, "\n")) {
                         return false;
                     }
                 }
-                return builder_appendf(builder, "    mov byte [ebp-%zu], 0\n", base_offset - len);
+                return builder_appendf(builder, "    mov byte [ebp-%u], 0\n", base_offset - len);
             }
         }
     }
@@ -2238,14 +2239,14 @@ static bool generate_string_literal_copy(
     }
 
     for (i = 1; i < len; i++) {
-        if (!builder_appendf(builder, "    mov byte [%s+%zu], ", target_name, i) ||
+        if (!builder_appendf(builder, "    mov byte [%s+%u], ", target_name, i) ||
             !builder_append_nasm_byte_literal(builder, (unsigned char)literal[i]) ||
             !builder_append(builder, "\n")) {
             return false;
         }
     }
 
-    return builder_appendf(builder, "    mov byte [%s+%zu], 0\n", target_name, len);
+    return builder_appendf(builder, "    mov byte [%s+%u], 0\n", target_name, len);
 }
 
 static bool generate_string_address(CodegenContext *context, const char *var_name) {
@@ -2257,7 +2258,7 @@ static bool generate_string_address(CodegenContext *context, const char *var_nam
     if (parameter != NULL && parameter->type == AST_TYPE_STRING && parameter->storage == AST_STORAGE_INDEXED) {
         return builder_appendf(
             context->builder,
-            "    mov eax, dword [ebp+%zu]\n",
+            "    mov eax, dword [ebp+%u]\n",
             parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index));
     }
 
@@ -2265,7 +2266,7 @@ static bool generate_string_address(CodegenContext *context, const char *var_nam
         for (i = 0; i < context->proc_local_count; i++) {
             if (strcmp(context->proc_locals[i].name, var_name) == 0) {
                 size_t base_offset = local_declaration_frame_offset(context->proc_locals, i);
-                return builder_appendf(context->builder, "    lea eax, [ebp-%zu]\n", base_offset);
+                return builder_appendf(context->builder, "    lea eax, [ebp-%u]\n", base_offset);
             }
         }
     }
@@ -2282,7 +2283,7 @@ static bool generate_aggregate_address(CodegenContext *context, const char *name
         for (i = 0; i < context->proc_local_count; i++) {
             if (strcmp(context->proc_locals[i].name, name) == 0) {
                 size_t base_offset = local_declaration_frame_offset(context->proc_locals, i);
-                return builder_appendf(context->builder, "    lea eax, [ebp-%zu]\n", base_offset);
+                return builder_appendf(context->builder, "    lea eax, [ebp-%u]\n", base_offset);
             }
         }
     }
@@ -2291,7 +2292,7 @@ static bool generate_aggregate_address(CodegenContext *context, const char *name
     if (parameter != NULL && parameter->type == AST_TYPE_STRING && parameter->storage == AST_STORAGE_INDEXED) {
         return builder_appendf(
             context->builder,
-            "    mov eax, dword [ebp+%zu]\n",
+            "    mov eax, dword [ebp+%u]\n",
             parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index));
     }
 
@@ -2324,13 +2325,13 @@ static bool generate_string_expression_address(CodegenContext *context, const AS
 static bool append_copy_string_from_eax_to_edx(StringBuilder *builder, size_t label_id) {
     return builder_append(builder, "    mov esi, eax\n") &&
            builder_append(builder, "    mov edi, edx\n") &&
-           builder_appendf(builder, ".Lcopystr%zu:\n", label_id) &&
+           builder_appendf(builder, ".Lcopystr%u:\n", label_id) &&
            builder_append(builder, "    mov al, byte [esi]\n") &&
            builder_append(builder, "    mov byte [edi], al\n") &&
            builder_append(builder, "    inc esi\n") &&
            builder_append(builder, "    inc edi\n") &&
            builder_append(builder, "    test al, al\n") &&
-           builder_appendf(builder, "    jne .Lcopystr%zu\n", label_id);
+           builder_appendf(builder, "    jne .Lcopystr%u\n", label_id);
 }
 
 static bool generate_string_assignment(
@@ -2463,11 +2464,11 @@ static bool generate_float_comparison(
     }
 
     label_id = context->next_label_id++;
-    return builder_appendf(context->builder, "    %s .Lfloat_true%zu\n", jump, label_id) &&
-           builder_appendf(context->builder, "    jmp .Lfloat_end%zu\n", label_id) &&
-           builder_appendf(context->builder, ".Lfloat_true%zu:\n", label_id) &&
+    return builder_appendf(context->builder, "    %s .Lfloat_true%u\n", jump, label_id) &&
+           builder_appendf(context->builder, "    jmp .Lfloat_end%u\n", label_id) &&
+           builder_appendf(context->builder, ".Lfloat_true%u:\n", label_id) &&
            builder_append(context->builder, "    mov eax, 1\n") &&
-           builder_appendf(context->builder, ".Lfloat_end%zu:\n", label_id);
+           builder_appendf(context->builder, ".Lfloat_end%u:\n", label_id);
 }
 
 static bool generate_float_expression(CodegenContext *context, const ASTExpression *expression, CompilerError *error) {
@@ -2708,7 +2709,7 @@ static bool generate_expression(CodegenContext *context, const ASTExpression *ex
                     return generate_linearized_index(context, access, error) &&
                            builder_appendf(
                                builder,
-                               "    mov edx, dword [ebp+%zu]\n",
+                               "    mov edx, dword [ebp+%u]\n",
                                parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index)) &&
                            builder_append(builder, "    add edx, eax\n") &&
                            builder_append(builder, "    movzx eax, byte [edx]\n");
@@ -2719,7 +2720,7 @@ static bool generate_expression(CodegenContext *context, const ASTExpression *ex
                         context->proc_locals, context->proc_local_count, access->name);
                     if (base_offset > 0) {
                         return generate_linearized_index(context, access, error) &&
-                               builder_appendf(builder, "    lea edx, [ebp + eax - %zu]\n", base_offset) &&
+                               builder_appendf(builder, "    lea edx, [ebp + eax - %u]\n", base_offset) &&
                                builder_append(builder, "    movzx eax, byte [edx]\n");
                     }
                 }
@@ -2738,7 +2739,7 @@ static bool generate_expression(CodegenContext *context, const ASTExpression *ex
                        builder_append(builder, "    imul eax, 4\n") &&
                        builder_appendf(
                            builder,
-                           "    mov edx, dword [ebp+%zu]\n",
+                           "    mov edx, dword [ebp+%u]\n",
                            parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index)) &&
                        builder_append(builder, "    lea edx, [edx + eax]\n") &&
                        builder_append(builder, "    mov eax, dword [edx]\n");
@@ -2752,7 +2753,7 @@ static bool generate_expression(CodegenContext *context, const ASTExpression *ex
                     return generate_linearized_index(context, access, error) &&
                            builder_append(builder, "    imul eax, 4\n") &&
                            builder_append(builder, "    neg eax\n") &&
-                           builder_appendf(builder, "    lea edx, [ebp + eax - %zu]\n", base_offset) &&
+                           builder_appendf(builder, "    lea edx, [ebp + eax - %u]\n", base_offset) &&
                            builder_append(builder, "    mov eax, dword [edx]\n");
                 }
             }
@@ -2816,7 +2817,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                         return generate_linearized_index(context, access, error) &&
                                builder_appendf(
                                    builder,
-                                   "    mov edx, dword [ebp+%zu]\n",
+                                   "    mov edx, dword [ebp+%u]\n",
                                    parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index)) &&
                                builder_append(builder, "    add edx, eax\n") &&
                                builder_append(builder, "    pop eax\n") &&
@@ -2828,7 +2829,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                             context->proc_locals, context->proc_local_count, access->name);
                         if (base_offset > 0) {
                             if (!generate_linearized_index(context, access, error) ||
-                                !builder_appendf(builder, "    lea edx, [ebp + eax - %zu]\n", base_offset)) {
+                                !builder_appendf(builder, "    lea edx, [ebp + eax - %u]\n", base_offset)) {
                                 return false;
                             }
                             return builder_append(builder, "    pop eax\n") &&
@@ -2851,7 +2852,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                            builder_append(builder, "    imul eax, 4\n") &&
                            builder_appendf(
                                builder,
-                               "    mov edx, dword [ebp+%zu]\n",
+                               "    mov edx, dword [ebp+%u]\n",
                                parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index)) &&
                            builder_append(builder, "    lea edx, [edx + eax]\n") &&
                            builder_append(builder, "    pop eax\n") &&
@@ -2865,7 +2866,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                         if (!generate_linearized_index(context, access, error) ||
                             !builder_append(builder, "    imul eax, 4\n") ||
                             !builder_append(builder, "    neg eax\n") ||
-                            !builder_appendf(builder, "    lea edx, [ebp + eax - %zu]\n", base_offset)) {
+                            !builder_appendf(builder, "    lea edx, [ebp + eax - %u]\n", base_offset)) {
                             return false;
                         }
                         return builder_append(builder, "    pop eax\n") &&
@@ -2982,7 +2983,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                         return generate_linearized_index(context, &access, error) &&
                                builder_appendf(
                                    builder,
-                                   "    mov edx, dword [ebp+%zu]\n",
+                                   "    mov edx, dword [ebp+%u]\n",
                                    parameter_stack_offset(context->current_procedure, context->parameters, context->parameter_count, parameter_index)) &&
                                builder_append(builder, "    add edx, eax\n") &&
                                builder_append(builder, "    pop eax\n") &&
@@ -2994,7 +2995,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                             context->proc_locals, context->proc_local_count, rname);
                         if (base_offset > 0) {
                             return generate_linearized_index(context, &access, error) &&
-                                   builder_appendf(builder, "    lea edx, [ebp + eax - %zu]\n", base_offset) &&
+                                   builder_appendf(builder, "    lea edx, [ebp + eax - %u]\n", base_offset) &&
                                    builder_append(builder, "    pop eax\n") &&
                                    builder_append(builder, "    mov byte [edx], al\n");
                         }
@@ -3018,7 +3019,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                             return generate_linearized_index(context, &access, error) &&
                                    builder_append(builder, "    imul eax, 4\n") &&
                                    builder_append(builder, "    neg eax\n") &&
-                                   builder_appendf(builder, "    lea edx, [ebp + eax - %zu]\n", base_offset) &&
+                                   builder_appendf(builder, "    lea edx, [ebp + eax - %u]\n", base_offset) &&
                                    builder_append(builder, "    pop eax\n") &&
                                    builder_append(builder, "    mov dword [edx], eax\n");
                         }
@@ -3045,7 +3046,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                 size_t max_read = cap > 1 ? cap - 1 : 0;
 
                 return generate_string_address(context, rname) &&
-                       builder_appendf(builder, "    mov edx, %zu\n", max_read) &&
+                       builder_appendf(builder, "    mov edx, %u\n", max_read) &&
                        builder_append(builder, "    call read_string\n");
             }
 
@@ -3121,7 +3122,7 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
                     size_t label_id = context->next_label_id++;
 
                     if (!generate_string_expression_address(context, command->return_command.expression, error) ||
-                        !builder_appendf(builder, "    mov edx, dword [ebp+%zu]\n", return_offset) ||
+                        !builder_appendf(builder, "    mov edx, dword [ebp+%u]\n", return_offset) ||
                         !append_copy_string_from_eax_to_edx(builder, label_id)) {
                         return false;
                     }
@@ -3144,30 +3145,30 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
             }
 
             if (command->if_command.else_count > 0) {
-                return builder_appendf(builder, "    je .Lelse%zu\n", label_id) &&
+                return builder_appendf(builder, "    je .Lelse%u\n", label_id) &&
                        generate_command_block(
                            context, command->if_command.then_commands, command->if_command.then_count, error) &&
-                       builder_appendf(builder, "    jmp .Lendif%zu\n", label_id) &&
-                       builder_appendf(builder, ".Lelse%zu:\n", label_id) &&
+                       builder_appendf(builder, "    jmp .Lendif%u\n", label_id) &&
+                       builder_appendf(builder, ".Lelse%u:\n", label_id) &&
                        generate_command_block(
                            context, command->if_command.else_commands, command->if_command.else_count, error) &&
-                       builder_appendf(builder, ".Lendif%zu:\n", label_id);
+                       builder_appendf(builder, ".Lendif%u:\n", label_id);
             }
 
-            return builder_appendf(builder, "    je .Lendif%zu\n", label_id) &&
+            return builder_appendf(builder, "    je .Lendif%u\n", label_id) &&
                    generate_command_block(context, command->if_command.then_commands, command->if_command.then_count, error) &&
-                   builder_appendf(builder, ".Lendif%zu:\n", label_id);
+                   builder_appendf(builder, ".Lendif%u:\n", label_id);
         }
         case AST_COMMAND_WHILE: {
             size_t label_id = context->next_label_id++;
 
-            return builder_appendf(builder, ".Lwhile%zu:\n", label_id) &&
+            return builder_appendf(builder, ".Lwhile%u:\n", label_id) &&
                    generate_expression(context, command->while_command.condition, error) &&
                    builder_append(builder, "    cmp eax, 0\n") &&
-                   builder_appendf(builder, "    je .Lendwhile%zu\n", label_id) &&
+                   builder_appendf(builder, "    je .Lendwhile%u\n", label_id) &&
                    generate_command_block(context, command->while_command.body_commands, command->while_command.body_count, error) &&
-                   builder_appendf(builder, "    jmp .Lwhile%zu\n", label_id) &&
-                   builder_appendf(builder, ".Lendwhile%zu:\n", label_id);
+                   builder_appendf(builder, "    jmp .Lwhile%u\n", label_id) &&
+                   builder_appendf(builder, ".Lendwhile%u:\n", label_id);
         }
         case AST_COMMAND_FOR: {
             size_t label_id = context->next_label_id++;
@@ -3207,10 +3208,10 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
             }
 
             if (context->current_proc_name != NULL) {
-                if (!builder_appendf(builder, "    mov dword [ebp-%zu], eax\n", end_offset)) {
+                if (!builder_appendf(builder, "    mov dword [ebp-%u], eax\n", end_offset)) {
                     return false;
                 }
-            } else if (!builder_appendf(builder, "    mov dword [_for_end_%zu], eax\n", label_id)) {
+            } else if (!builder_appendf(builder, "    mov dword [_for_end_%u], eax\n", label_id)) {
                 return false;
             }
 
@@ -3219,44 +3220,44 @@ static bool generate_command(CodegenContext *context, const ASTCommand *command,
             }
 
             if (context->current_proc_name != NULL) {
-                if (!builder_appendf(builder, "    mov dword [ebp-%zu], eax\n", step_offset)) {
+                if (!builder_appendf(builder, "    mov dword [ebp-%u], eax\n", step_offset)) {
                     return false;
                 }
-            } else if (!builder_appendf(builder, "    mov dword [_for_step_%zu], eax\n", label_id)) {
+            } else if (!builder_appendf(builder, "    mov dword [_for_step_%u], eax\n", label_id)) {
                 return false;
             }
 
-            return builder_appendf(builder, ".Lfor%zu:\n", label_id) &&
+            return builder_appendf(builder, ".Lfor%u:\n", label_id) &&
                    (context->current_proc_name != NULL
-                        ? builder_appendf(builder, "    mov eax, dword [ebp-%zu]\n", step_offset)
-                        : builder_appendf(builder, "    mov eax, dword [_for_step_%zu]\n", label_id)) &&
+                        ? builder_appendf(builder, "    mov eax, dword [ebp-%u]\n", step_offset)
+                        : builder_appendf(builder, "    mov eax, dword [_for_step_%u]\n", label_id)) &&
                    builder_append(builder, "    cmp eax, 0\n") &&
-                   builder_appendf(builder, "    je .Lendfor%zu\n", label_id) &&
-                   builder_appendf(builder, "    jg .Lforpos%zu\n", label_id) &&
+                   builder_appendf(builder, "    je .Lendfor%u\n", label_id) &&
+                   builder_appendf(builder, "    jg .Lforpos%u\n", label_id) &&
                    generate_load_name(context, command->for_command.iterator_name) &&
                    (context->current_proc_name != NULL
-                        ? builder_appendf(builder, "    mov ebx, dword [ebp-%zu]\n", end_offset)
-                        : builder_appendf(builder, "    mov ebx, dword [_for_end_%zu]\n", label_id)) &&
+                        ? builder_appendf(builder, "    mov ebx, dword [ebp-%u]\n", end_offset)
+                        : builder_appendf(builder, "    mov ebx, dword [_for_end_%u]\n", label_id)) &&
                    builder_append(builder, "    cmp eax, ebx\n") &&
-                   builder_appendf(builder, "    jl .Lendfor%zu\n", label_id) &&
-                   builder_appendf(builder, "    jmp .Lforbody%zu\n", label_id) &&
-                   builder_appendf(builder, ".Lforpos%zu:\n", label_id) &&
+                   builder_appendf(builder, "    jl .Lendfor%u\n", label_id) &&
+                   builder_appendf(builder, "    jmp .Lforbody%u\n", label_id) &&
+                   builder_appendf(builder, ".Lforpos%u:\n", label_id) &&
                    generate_load_name(context, command->for_command.iterator_name) &&
                    (context->current_proc_name != NULL
-                        ? builder_appendf(builder, "    mov ebx, dword [ebp-%zu]\n", end_offset)
-                        : builder_appendf(builder, "    mov ebx, dword [_for_end_%zu]\n", label_id)) &&
+                        ? builder_appendf(builder, "    mov ebx, dword [ebp-%u]\n", end_offset)
+                        : builder_appendf(builder, "    mov ebx, dword [_for_end_%u]\n", label_id)) &&
                    builder_append(builder, "    cmp eax, ebx\n") &&
-                   builder_appendf(builder, "    jg .Lendfor%zu\n", label_id) &&
-                   builder_appendf(builder, ".Lforbody%zu:\n", label_id) &&
+                   builder_appendf(builder, "    jg .Lendfor%u\n", label_id) &&
+                   builder_appendf(builder, ".Lforbody%u:\n", label_id) &&
                    generate_command_block(context, command->for_command.body_commands, command->for_command.body_count, error) &&
                    generate_load_name(context, command->for_command.iterator_name) &&
                    (context->current_proc_name != NULL
-                        ? builder_appendf(builder, "    mov ebx, dword [ebp-%zu]\n", step_offset)
-                        : builder_appendf(builder, "    mov ebx, dword [_for_step_%zu]\n", label_id)) &&
+                        ? builder_appendf(builder, "    mov ebx, dword [ebp-%u]\n", step_offset)
+                        : builder_appendf(builder, "    mov ebx, dword [_for_step_%u]\n", label_id)) &&
                    builder_append(builder, "    add eax, ebx\n") &&
                    generate_store_eax_to_name(context, command->for_command.iterator_name) &&
-                   builder_appendf(builder, "    jmp .Lfor%zu\n", label_id) &&
-                   builder_appendf(builder, ".Lendfor%zu:\n", label_id);
+                   builder_appendf(builder, "    jmp .Lfor%u\n", label_id) &&
+                   builder_appendf(builder, ".Lendfor%u:\n", label_id);
         }
         default:
             return false;
@@ -3367,7 +3368,7 @@ static bool generate_call(CodegenContext *context, const ASTCall *call, Compiler
         if (return_temp == NULL) {
             return fail_codegen_internal(error, 0, 0, "Internal error: missing string return temp buffer.");
         }
-        if (!builder_appendf(context->builder, "    push _retstr_%zu\n", return_temp->label_id)) {
+        if (!builder_appendf(context->builder, "    push _retstr_%u\n", return_temp->label_id)) {
             return false;
         }
     }
@@ -3377,13 +3378,13 @@ static bool generate_call(CodegenContext *context, const ASTCall *call, Compiler
     }
 
     if (argument_bytes > 0) {
-        if (!builder_appendf(context->builder, "    add esp, %zu\n", argument_bytes)) {
+        if (!builder_appendf(context->builder, "    add esp, %u\n", argument_bytes)) {
             return false;
         }
     }
 
     if (signature != NULL && signature->return_type == AST_TYPE_STRING) {
-        return builder_appendf(context->builder, "    mov eax, _retstr_%zu\n", return_temp->label_id);
+        return builder_appendf(context->builder, "    mov eax, _retstr_%u\n", return_temp->label_id);
     }
 
     return true;
@@ -3435,13 +3436,13 @@ static bool generate_procedure(
     }
 
     if (total_frame_bytes > 0) {
-        if (!builder_appendf(builder, "    sub esp, %zu\n", total_frame_bytes)) {
+        if (!builder_appendf(builder, "    sub esp, %u\n", total_frame_bytes)) {
             free(procedure_for_loop_ids.items);
             return false;
         }
 
         for (slot_index = 0; slot_index < total_frame_bytes / 4; ++slot_index) {
-            if (!builder_appendf(builder, "    mov dword [ebp-%zu], 0\n", (slot_index + 1) * 4)) {
+            if (!builder_appendf(builder, "    mov dword [ebp-%u], 0\n", (slot_index + 1) * 4)) {
                 free(procedure_for_loop_ids.items);
                 return false;
             }
@@ -3476,10 +3477,10 @@ static bool generate_procedure(
         if (parameter->type == AST_TYPE_STRING) {
             if (!builder_appendf(
                     builder,
-                    "    mov esi, dword [ebp+%zu]\n",
+                    "    mov esi, dword [ebp+%u]\n",
                     parameter_stack_offset(proc, proc->parameters, proc->parameter_count, param_index)) ||
-                !builder_appendf(builder, "    lea edi, [ebp-%zu]\n", local_declaration_frame_offset(codegen_locals, copy_index)) ||
-                !builder_appendf(builder, "    mov ecx, %zu\n", parameter_size) ||
+                !builder_appendf(builder, "    lea edi, [ebp-%u]\n", local_declaration_frame_offset(codegen_locals, copy_index)) ||
+                !builder_appendf(builder, "    mov ecx, %u\n", parameter_size) ||
                 !builder_append(builder, "    cld\n    rep movsb\n")) {
                 free(procedure_for_loop_ids.items);
                 for (slot_index = 0; slot_index < codegen_local_count; ++slot_index) {
@@ -3498,16 +3499,16 @@ static bool generate_procedure(
             size_t element_size = parameter->type == AST_TYPE_FLUTUANTE ? 8 : 4;
             size_t element_count = parameter_size / element_size;
 
-            if (!builder_appendf(builder, "    mov esi, dword [ebp+%zu]\n", source_offset) ||
-                !builder_appendf(builder, "    lea edi, [ebp-%zu]\n", dest_offset) ||
-                !builder_appendf(builder, "    mov ecx, %zu\n", element_count) ||
+            if (!builder_appendf(builder, "    mov esi, dword [ebp+%u]\n", source_offset) ||
+                !builder_appendf(builder, "    lea edi, [ebp-%u]\n", dest_offset) ||
+                !builder_appendf(builder, "    mov ecx, %u\n", element_count) ||
                 !builder_append(builder, "    cld\n") ||
-                !builder_appendf(builder, ".Lparamcopy%zu:\n", copy_index) ||
+                !builder_appendf(builder, ".Lparamcopy%u:\n", copy_index) ||
                 !builder_append(builder, "    mov eax, dword [esi]\n") ||
                 !builder_append(builder, "    mov dword [edi], eax\n") ||
                 !builder_append(builder, "    add esi, 4\n") ||
                 !builder_append(builder, "    sub edi, 4\n") ||
-                !builder_appendf(builder, "    loop .Lparamcopy%zu\n", copy_index)) {
+                !builder_appendf(builder, "    loop .Lparamcopy%u\n", copy_index)) {
                 free(procedure_for_loop_ids.items);
                 for (slot_index = 0; slot_index < codegen_local_count; ++slot_index) {
                     free(codegen_locals[slot_index].name);
@@ -3935,7 +3936,7 @@ bool codegen_generate_program(const ASTProgram *program, const SemanticInfo *sem
             const char *zero = (var_type == AST_TYPE_FLUTUANTE) ? "0.0" : "0";
 
             if (!builder_append_user_symbol_name(&builder, &for_loop_ids, name) ||
-                !builder_appendf(&builder, " times %zu %s %s\n", capacity, unit, zero)) {
+                !builder_appendf(&builder, " times %u %s %s\n", capacity, unit, zero)) {
                 goto fail;
             }
         } else {
@@ -3955,8 +3956,8 @@ bool codegen_generate_program(const ASTProgram *program, const SemanticInfo *sem
     for (index = 0; index < main_for_loop_ids.count; ++index) {
         size_t label_id = main_for_loop_ids.items[index];
 
-        if (!builder_appendf(&builder, "_for_end_%zu dd 0\n", label_id) ||
-            !builder_appendf(&builder, "_for_step_%zu dd 0\n", label_id)) {
+        if (!builder_appendf(&builder, "_for_end_%u dd 0\n", label_id) ||
+            !builder_appendf(&builder, "_for_step_%u dd 0\n", label_id)) {
             goto fail;
         }
     }
