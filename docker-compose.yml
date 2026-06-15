@@ -22,4 +22,5 @@ services:
       - SUPABASE_URL=${SUPABASE_URL:-}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
       - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
+      - COMPILE_TIMEOUT_S=${COMPILE_TIMEOUT_S:-15}
     restart: on-failure

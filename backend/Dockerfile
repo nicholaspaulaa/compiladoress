@@ -34,11 +34,19 @@ COPY --from=compiler-builder /tmp/compiler-version.txt /usr/local/bin/simplesc-v
 RUN chmod +x /usr/local/bin/simplesc && \
     /usr/local/bin/simplesc 2>&1 || true
 
+# Toolchain i386 — nasm + linker para fases futuras (nasm/ld no mesmo container)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        nasm \
+        binutils-i686-linux-gnu \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/config.py backend/auth.py backend/app.py .
+COPY backend/config.py backend/auth.py backend/app.py backend/compile.py backend/error_parser.py .
 
 EXPOSE 5000
 
