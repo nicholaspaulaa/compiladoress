@@ -248,7 +248,7 @@ static bool for_loop_temp_name_equals(const SizeList *for_loop_ids, const char *
     }
 
     for (index = 0; index < for_loop_ids->count; ++index) {
-        written = snprintf(expected, sizeof(expected), "%s%u", prefix, for_loop_ids->items[index]);
+        written = snprintf(expected, sizeof(expected), "%s%zu", prefix, for_loop_ids->items[index]);
         if (written < 0 || (size_t)written >= sizeof(expected)) {
             return false;
         }
