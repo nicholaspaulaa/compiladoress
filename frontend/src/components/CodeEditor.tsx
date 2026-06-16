@@ -1,14 +1,22 @@
-import Editor from "@monaco-editor/react";
+import Editor, { type Monaco } from "@monaco-editor/react";
 import { useCallback } from "react";
 
 import {
   DEFAULT_SIMPLES_CODE,
   editorOptions,
 } from "../lib/monacoConfig";
+import {
+  registerSimplesLanguage,
+  SIMPLES_LANGUAGE_ID,
+} from "../lib/simples/registerSimplesLanguage";
 
 interface CodeEditorProps {
   value?: string;
   onChange?: (value: string) => void;
+}
+
+function handleEditorWillMount(monaco: Monaco) {
+  registerSimplesLanguage(monaco);
 }
 
 export function CodeEditor({
@@ -26,10 +34,11 @@ export function CodeEditor({
     <div className="ide-editor-host">
       <Editor
         height="100%"
-        defaultLanguage="plaintext"
+        language={SIMPLES_LANGUAGE_ID}
         theme="vs-dark"
         value={value}
         onChange={handleChange}
+        beforeMount={handleEditorWillMount}
         options={editorOptions}
         loading={
           <div className="ide-editor-loading retro-subtitle">
