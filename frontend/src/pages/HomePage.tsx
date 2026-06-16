@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { CodeEditor } from "../components/CodeEditor";
 import { IdeLayout } from "../components/IdeLayout";
+import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
 
@@ -25,7 +26,7 @@ export function HomePage() {
               SIMPLES EDITOR
             </h1>
             <span className="retro-subtitle hidden text-sm tracking-widest sm:inline">
-              &gt; EDITOR
+              &gt; IDE
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -43,9 +44,9 @@ export function HomePage() {
         </header>
       }
     >
-      <section className="ide-editor-pane" aria-label="Editor de codigo SIMPLES">
-        <CodeEditor value={code} onChange={setCode} />
-      </section>
+      <ThreePanelLayout
+        editor={<CodeEditor value={code} onChange={setCode} />}
+      />
     </IdeLayout>
   );
 }
