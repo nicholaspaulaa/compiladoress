@@ -76,6 +76,10 @@ def compile_code(code: str) -> dict:
     except subprocess.TimeoutExpired:
         if proc is not None:
             _kill_process_tree(proc)
+            try:
+                proc.communicate()
+            except (OSError, ValueError):
+                pass
         return {
             "success": False,
             "errors": [
