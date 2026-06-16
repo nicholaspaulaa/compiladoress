@@ -1,20 +1,18 @@
 <!doctype html>
 <html lang="pt-br">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Frontend - Compiladoress</title>
-    <style>
-      body { font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0 }
-      .card { text-align:center }
-      a { color:#007acc }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simples Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <div class="card">
-      <h1>Frontend - Página Inicial</h1>
-      <p>Servida pelo Nginx via <strong>docker compose up</strong>.</p>
-      <p>API backend: <a href="/api/health" target="_blank">/api/health</a></p>
-    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
