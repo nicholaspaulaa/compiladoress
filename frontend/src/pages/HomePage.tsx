@@ -1,21 +1,45 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { CodeEditor } from "../components/CodeEditor";
 import { IdeLayout } from "../components/IdeLayout";
+import { IdeToolbar } from "../components/IdeToolbar";
 import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
+import { MOCK_COMPILE_MS, type RunState } from "../lib/runState";
 
 export function HomePage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState(DEFAULT_SIMPLES_CODE);
+  const [runState, setRunState] = useState<RunState>("idle");
+  const compileTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (compileTimerRef.current !== null) {
+        window.clearTimeout(compileTimerRef.current);
+      }
+    };
+  }, []);
 
   async function handleSignOut() {
     await signOut();
     navigate("/login", { replace: true });
   }
+
+  const handleRun = useCallback(() => {
+    if (runState === "compiling") {
+      return;
+    }
+
+    setRunState("compiling");
+    compileTimerRef.current = window.setTimeout(() => {
+      setRunState("idle");
+      compileTimerRef.current = null;
+    }, MOCK_COMPILE_MS);
+  }, [runState]);
 
   return (
     <IdeLayout
@@ -43,6 +67,7 @@ export function HomePage() {
           </div>
         </header>
       }
+      toolbar={<IdeToolbar runState={runState} onRun={handleRun} />}
     >
       <ThreePanelLayout
         editor={<CodeEditor value={code} onChange={setCode} />}
