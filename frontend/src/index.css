@@ -1,0 +1,273 @@
+@import "tailwindcss";
+
+:root {
+  --retro-bg: #0d0618;
+  --retro-bg-mid: #1a0f2e;
+  --retro-purple: #5c2d91;
+  --retro-purple-bright: #9b4dff;
+  --retro-green: #00ff88;
+  --retro-green-dim: #1a5c3a;
+  --retro-green-glow: #7dffbe;
+  --retro-text: #c8ffe0;
+  --retro-text-dim: #8abf9a;
+  --retro-border: #00ff88;
+  --retro-error: #ff4d8a;
+  --retro-warn: #ffcc00;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.25rem;
+  background-color: var(--retro-bg);
+  color: var(--retro-text);
+}
+
+/* Fundo retro: grid + gradiente roxo */
+.retro-screen {
+  position: relative;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(13, 6, 24, 0.92) 0%, rgba(26, 15, 46, 0.96) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 136, 0.03) 2px,
+      rgba(0, 255, 136, 0.03) 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 40px,
+      rgba(155, 77, 255, 0.04) 40px,
+      rgba(155, 77, 255, 0.04) 41px
+    ),
+    radial-gradient(ellipse at 50% 0%, #3d1a6e 0%, var(--retro-bg) 70%);
+}
+
+.retro-screen::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.12) 0px,
+    rgba(0, 0, 0, 0.12) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 50;
+}
+
+/* Painel estilo terminal CRT */
+.retro-panel {
+  position: relative;
+  z-index: 10;
+  border: 3px solid var(--retro-border);
+  background: linear-gradient(
+    145deg,
+    rgba(26, 15, 46, 0.95) 0%,
+    rgba(13, 6, 24, 0.98) 100%
+  );
+  box-shadow:
+    0 0 20px rgba(0, 255, 136, 0.25),
+    inset 0 0 30px rgba(92, 45, 145, 0.3),
+    4px 4px 0 rgba(155, 77, 255, 0.5);
+}
+
+.retro-panel::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  pointer-events: none;
+}
+
+.retro-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--retro-green);
+  text-shadow:
+    0 0 8px rgba(0, 255, 136, 0.8),
+    0 0 20px rgba(0, 255, 136, 0.4);
+  letter-spacing: 0.05em;
+}
+
+@media (min-width: 640px) {
+  .retro-title {
+    font-size: 1rem;
+  }
+}
+
+.retro-subtitle {
+  color: var(--retro-purple-bright);
+  text-shadow: 0 0 6px rgba(155, 77, 255, 0.5);
+}
+
+.retro-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 1.1rem;
+  color: var(--retro-green-glow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.retro-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-family: "VT323", monospace;
+  font-size: 1.25rem;
+  color: var(--retro-green);
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--retro-purple);
+  outline: none;
+  box-shadow: inset 0 0 12px rgba(92, 45, 145, 0.4);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.retro-input::placeholder {
+  color: rgba(0, 255, 136, 0.3);
+}
+
+.retro-input:focus {
+  border-color: var(--retro-green);
+  box-shadow:
+    inset 0 0 12px rgba(0, 255, 136, 0.15),
+    0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.retro-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.retro-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.55rem;
+  line-height: 1.8;
+  color: var(--retro-bg);
+  background: linear-gradient(180deg, var(--retro-green) 0%, #00cc6a 100%);
+  border: 2px solid var(--retro-green-glow);
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 15px rgba(0, 255, 136, 0.5),
+    3px 3px 0 var(--retro-purple-bright);
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
+}
+
+.retro-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow:
+    0 0 25px rgba(0, 255, 136, 0.7),
+    4px 4px 0 var(--retro-purple-bright);
+}
+
+.retro-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow:
+    0 0 10px rgba(0, 255, 136, 0.4),
+    1px 1px 0 var(--retro-purple-bright);
+}
+
+.retro-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.retro-btn-sm {
+  width: auto;
+  font-size: 0.5rem;
+  padding: 0.5rem 0.85rem;
+}
+
+.retro-btn-outline {
+  color: var(--retro-green);
+  background: transparent;
+  border: 2px solid var(--retro-green);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.2);
+}
+
+.retro-btn-outline:hover:not(:disabled) {
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+}
+
+.retro-alert {
+  padding: 0.75rem 1rem;
+  font-size: 1.1rem;
+  border: 2px solid;
+}
+
+.retro-alert-error {
+  color: #ffb3cc;
+  border-color: var(--retro-error);
+  background: rgba(255, 77, 138, 0.12);
+  box-shadow: inset 0 0 12px rgba(255, 77, 138, 0.15);
+}
+
+.retro-alert-warn {
+  color: var(--retro-warn);
+  border-color: var(--retro-warn);
+  background: rgba(255, 204, 0, 0.08);
+}
+
+.retro-alert-success {
+  color: var(--retro-green-glow);
+  border-color: var(--retro-green);
+  background: rgba(0, 255, 136, 0.08);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.15);
+}
+
+.retro-link {
+  color: var(--retro-purple-bright);
+  text-decoration: none;
+  text-shadow: 0 0 6px rgba(155, 77, 255, 0.5);
+}
+
+.retro-link:hover {
+  color: var(--retro-green);
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+}
+
+.retro-code {
+  color: var(--retro-green);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--retro-purple);
+}
+
+.retro-header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 3px solid var(--retro-green);
+  background: rgba(13, 6, 24, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.15);
+}
+
+.retro-blink::after {
+  content: "_";
+  animation: retro-blink 1s step-end infinite;
+  color: var(--retro-green);
+}
+
+@keyframes retro-blink {
+  50% {
+    opacity: 0;
+  }
+}

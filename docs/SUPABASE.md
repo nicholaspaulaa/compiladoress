@@ -23,7 +23,7 @@ Passos para criar o projeto de auth do **Simples Editor**.
 |----------|------------|
 | `SUPABASE_URL` | Project URL |
 | `SUPABASE_ANON_KEY` | anon / public key |
-| `SUPABASE_JWT_SECRET` | JWT Secret (na mesma pagina, abaixo das keys) |
+| `SUPABASE_JWT_SECRET` | JWT Secret (legado HS256; projetos novos usam ES256 via JWKS) |
 
 ## 4. Configurar localmente
 
