@@ -289,6 +289,52 @@ body {
   display: flex;
   flex-direction: column;
   padding: 0.75rem;
+  padding-top: 0;
+}
+
+.ide-toolbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1.5rem;
+  border-bottom: 2px solid var(--retro-purple);
+  background: rgba(13, 6, 24, 0.85);
+}
+
+.ide-toolbar__run {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 8rem;
+  justify-content: center;
+}
+
+.ide-toolbar__run:disabled {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+.ide-toolbar__status {
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+}
+
+.ide-toolbar__spinner {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid rgba(0, 255, 136, 0.25);
+  border-top-color: var(--retro-green);
+  border-radius: 50%;
+  animation: ide-spin 0.7s linear infinite;
+}
+
+@keyframes ide-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Layout 3 painéis — editor | NASM (topo), terminal (base) */
