@@ -7,7 +7,7 @@ import {
 } from "react-resizable-panels";
 
 import { IdePanel } from "./IdePanel";
-import { NasmPanelPlaceholder } from "./NasmPanelPlaceholder";
+import { NasmViewer } from "./NasmViewer";
 import { TerminalPanelPlaceholder } from "./TerminalPanelPlaceholder";
 
 interface ThreePanelLayoutProps {
@@ -67,7 +67,7 @@ export function ThreePanelLayout({ editor }: ThreePanelLayoutProps) {
           collapsible
           className="ide-panel-wrapper"
         >
-          <NasmPanelPlaceholder />
+          <NasmViewer />
         </Panel>
       </PanelGroup>
 
