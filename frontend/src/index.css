@@ -303,9 +303,32 @@ body {
 .ide-panels__top {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+}
+
+.ide-panel-wrapper {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.ide-panel-wrapper > .ide-panel {
+  flex: 1;
+  width: 100%;
+}
+
+.ide-resize-handle {
+  flex: 0 0 6px;
+  margin: 0 2px;
+  border-radius: 2px;
+  background: var(--retro-purple);
+  cursor: col-resize;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.ide-resize-handle:hover,
+.ide-resize-handle[data-resize-handle-active] {
+  background: var(--retro-green);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.45);
 }
 
 .ide-panel {
@@ -393,20 +416,6 @@ body {
   font-size: 1.1rem;
   color: var(--retro-text-dim);
   text-align: center;
-}
-
-/* Desktop: lado a lado. Abaixo de 1024px empilha editor/NASM (mobile fora de escopo v1). */
-@media (max-width: 1023px) {
-  .ide-panels__top {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-}
-
-@media (min-width: 1280px) {
-  .ide-panels__top {
-    grid-template-columns: 3fr 2fr;
-  }
 }
 
 .ide-editor-host {
