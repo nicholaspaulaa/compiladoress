@@ -34,6 +34,8 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
       - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
       - COMPILE_TIMEOUT_S=${COMPILE_TIMEOUT_S:-15}
+      - EXEC_TIMEOUT_S=${EXEC_TIMEOUT_S:-10}
+      - DOCKER_STOP_TIMEOUT_S=${DOCKER_STOP_TIMEOUT_S:-12}
       - SANDBOX_IMAGE=simples-runner:latest
     restart: on-failure
 

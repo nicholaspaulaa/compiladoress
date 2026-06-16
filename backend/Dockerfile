@@ -46,7 +46,7 @@ RUN apt-get update && \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/config.py backend/auth.py backend/app.py backend/compile.py backend/error_parser.py .
+COPY backend/config.py backend/auth.py backend/app.py backend/compile.py backend/error_parser.py backend/execution.py .
 
 EXPOSE 5000
 
