@@ -28,6 +28,7 @@ class Config:
     COMPILE_TIMEOUT_S = int(os.environ.get("COMPILE_TIMEOUT_S", "15"))
     EXEC_TIMEOUT_S = int(os.environ.get("EXEC_TIMEOUT_S", "10"))
     DOCKER_STOP_TIMEOUT_S = int(os.environ.get("DOCKER_STOP_TIMEOUT_S", "12"))
+    MAX_CODE_KB = int(os.environ.get("MAX_CODE_KB", "64"))
 
     SANDBOX_IMAGE = os.environ.get("SANDBOX_IMAGE", "simples-runner:latest")
     SANDBOX_MEMORY_MB = int(os.environ.get("SANDBOX_MEMORY_MB", "128"))
@@ -39,6 +40,10 @@ class Config:
     @classmethod
     def supabase_configured(cls) -> bool:
         return bool(cls.SUPABASE_URL and cls.SUPABASE_ANON_KEY and cls.SUPABASE_JWT_SECRET)
+
+    @classmethod
+    def max_code_bytes(cls) -> int:
+        return cls.MAX_CODE_KB * 1024
 
     @classmethod
     def sandbox_mem_limit(cls) -> str:
