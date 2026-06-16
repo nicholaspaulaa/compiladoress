@@ -58,5 +58,11 @@ def compile_endpoint():
 
 
 if __name__ == "__main__":
+    if not Config.supabase_configured():
+        print(
+            "AVISO: Supabase nao configurado (repo/.env). "
+            "WebSocket /ws/run e endpoints protegidos vao rejeitar tokens.",
+            flush=True,
+        )
     # Dev: Werkzeug + flask-sock. Producao: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker
     app.run(host="0.0.0.0", port=5000)
