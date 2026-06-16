@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from config import Config
+from metrics import ACTIVE_SANDBOXES
 
 try:
     import docker  # type: ignore
@@ -149,6 +150,7 @@ class PtyExecutionStrategy(ExecutionStrategy):
                 volumes={binary_dir: {"bind": "/sandbox", "mode": "ro"}},
                 **sandbox_run_kwargs(),
             )
+            ACTIVE_SANDBOXES.inc()
 
             attach = container.attach_socket(params=self.ATTACH_PARAMS)
             attach._sock.setblocking(False)
@@ -194,6 +196,8 @@ class PtyExecutionStrategy(ExecutionStrategy):
                 stopped=stopped,
             )
         finally:
+            if container is not None:
+                ACTIVE_SANDBOXES.dec()
             if attach is not None:
                 try:
                     attach.close()

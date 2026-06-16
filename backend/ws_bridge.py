@@ -9,6 +9,7 @@ from typing import Callable
 
 from config import Config
 from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy
+from metrics import record_execution
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,7 @@ class WsPtyBridge:
                 payload["stopped"] = True
             self._send_json(payload)
 
+        record_execution(result)
         return result
 
 
