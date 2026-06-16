@@ -14,14 +14,17 @@ import re
 from typing import TypedDict
 
 
-class CompileError(TypedDict):
+class CompileError(TypedDict, total=False):
     phase: str
     line: int
     column: int
     message: str
+    limit_s: int  # opcional — incluido apenas em erros de timeout
 
 
-_VALID_PHASES = frozenset({"lexer", "parser", "semantic", "codegen", "compiler", "server"})
+_VALID_PHASES = frozenset(
+    {"lexer", "parser", "semantic", "codegen", "compile_timeout", "compiler", "server"}
+)
 
 _LINE_ERROR_RE = re.compile(r"^(\w+):(\d+):(\d+):\s*(.+)$")
 _FALLBACK_RE = re.compile(r"^(?:error|erro)[:\s-]+(.+)$", re.IGNORECASE)
@@ -65,11 +68,27 @@ def parse_errors(stderr_text: str) -> list[CompileError]:
     return errors
 
 
-def make_error(phase: str, message: str, line: int = 0, column: int = 0) -> CompileError:
-    """Cria um erro estruturado para falhas do servidor (timeout, binario ausente, etc.)."""
-    return CompileError(
+def make_error(
+    phase: str,
+    message: str,
+    line: int = 0,
+    column: int = 0,
+    limit_s: int | None = None,
+) -> CompileError:
+    """Cria um erro estruturado para falhas do servidor (timeout, binario ausente, etc.).
+
+    Args:
+        phase: Fase do erro (lexer, parser, semantic, codegen, compile_timeout, compiler, server).
+        message: Mensagem descritiva do erro.
+        line, column: Coordenadas opcionais (padrao 0).
+        limit_s: Limite de segundos para erros de timeout (opcional).
+    """
+    err: CompileError = CompileError(
         phase=phase if phase in _VALID_PHASES else "unknown",
         line=line,
         column=column,
         message=message,
     )
+    if limit_s is not None:
+        err["limit_s"] = limit_s
+    return err

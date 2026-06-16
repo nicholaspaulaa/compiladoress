@@ -1,6 +1,7 @@
 """Compila codigo SIMPLES invocando o binario simplesc como subprocesso."""
 
 import os
+import signal
 import subprocess
 import tempfile
 
@@ -8,6 +9,34 @@ from config import Config
 from error_parser import make_error, parse_errors
 
 SIMPLESC_BIN = os.environ.get("SIMPLESC_BIN", "/usr/local/bin/simplesc")
+
+
+# ---------- helpers ----------
+
+def _kill_process_tree(proc: subprocess.Popen) -> None:
+    """Mata o processo e toda sua arvore de filhos, depois faz reap (PRD RF15)."""
+    try:
+        # SIGTERM primeiro para dar chance de cleanup
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+            return
+        except subprocess.TimeoutExpired:
+            pass
+
+        # SIGKILL como fallback hard
+        proc.kill()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            # Se nem SIGKILL funcionar, enviamos novamente
+            try:
+                os.kill(proc.pid, signal.SIGKILL)
+                proc.wait(timeout=1)
+            except (ProcessLookupError, subprocess.TimeoutExpired, OSError):
+                pass
+    except ProcessLookupError:
+        pass
 
 
 def compile_code(code: str) -> dict:
@@ -21,33 +50,39 @@ def compile_code(code: str) -> dict:
         src_path = src.name
 
     asm_path = src_path + ".asm"
+    proc = None
 
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             [SIMPLESC_BIN, src_path, "-o", asm_path],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout_s,
         )
+
+        stdout, stderr = proc.communicate(timeout=timeout_s)
 
         if proc.returncode == 0 and os.path.isfile(asm_path):
             with open(asm_path, encoding="utf-8") as f:
                 asm = f.read()
             return {"success": True, "asm": asm}
 
-        errors = parse_errors(proc.stderr)
-        if not errors and proc.stderr.strip():
-            errors = [make_error("unknown", proc.stderr.strip())]
+        errors = parse_errors(stderr)
+        if not errors and stderr.strip():
+            errors = [make_error("unknown", stderr.strip())]
 
         return {"success": False, "errors": errors}
 
     except subprocess.TimeoutExpired:
+        if proc is not None:
+            _kill_process_tree(proc)
         return {
             "success": False,
             "errors": [
                 make_error(
-                    "compiler",
+                    "compile_timeout",
                     f"Compilacao excedeu o tempo limite de {timeout_s} segundos",
+                    limit_s=timeout_s,
                 )
             ],
         }
