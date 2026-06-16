@@ -291,16 +291,122 @@ body {
   padding: 0.75rem;
 }
 
-.ide-editor-pane {
+/* Layout 3 painéis — editor | NASM (topo), terminal (base) */
+.ide-panels {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ide-panels__top {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.ide-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
   border: 3px solid var(--retro-border);
   background: var(--retro-bg-mid);
   box-shadow:
     0 0 16px rgba(0, 255, 136, 0.2),
     inset 0 0 24px rgba(92, 45, 145, 0.15);
+}
+
+.ide-panel__header {
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 2px solid var(--retro-purple);
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ide-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ide-editor-panel .ide-panel__body {
+  padding: 0;
+}
+
+.ide-terminal-panel {
+  flex: 0 0 min(220px, 32vh);
+  min-height: 120px;
+}
+
+.ide-nasm-placeholder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+}
+
+.ide-nasm-placeholder__code {
+  margin: 0;
+  font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--retro-text-dim);
+  white-space: pre;
+}
+
+.ide-nasm-placeholder__hint {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.95rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.terminal-panel__host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.terminal-panel__placeholder {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--retro-text-dim);
+  text-align: center;
+}
+
+/* Desktop: lado a lado. Abaixo de 1024px empilha editor/NASM (mobile fora de escopo v1). */
+@media (max-width: 1023px) {
+  .ide-panels__top {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ide-panels__top {
+    grid-template-columns: 3fr 2fr;
+  }
 }
 
 .ide-editor-host {
