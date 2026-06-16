@@ -23,11 +23,12 @@ docker compose up --build
 | http://localhost/login | — | Tela de login (email/senha) |
 | http://localhost/api/health | publico | Health check |
 | http://localhost/api/auth/verify | Bearer JWT | Valida token Supabase (POST) |
+| ws://localhost/ws/run | JWT (`?token=` ou `Sec-WebSocket-Protocol: bearer.<jwt>`) | Canal compile+run (PRD §9.2) |
 | http://localhost:5000/api/health | publico | Backend direto (debug) |
 
 ## Observacoes
 
-- O servico `nginx` faz proxy do frontend React (`/`, `/login`) e de `/api/*` para o `backend`.
+- O servico `nginx` faz proxy do frontend React (`/`, `/login`), de `/api/*` e de `/ws/*` para o `backend`.
 - O container `frontend` e construido com `SUPABASE_URL` e `SUPABASE_ANON_KEY` do `.env` (build Vite).
 - Credenciais Supabase ficam em `.env` (nao versionado).
 - Sem `.env`, o backend sobe mas `/api/auth/verify` retorna 503 ate configurar o JWT secret.

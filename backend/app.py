@@ -3,8 +3,10 @@ from flask import Flask, g, jsonify, request
 from auth import verify_jwt
 from compile import compile_code
 from config import Config
+from ws_run import sock, ws_run  # noqa: F401 — registra rota via decorator
 
 app = Flask(__name__)
+sock.init_app(app)
 
 
 @app.route("/api/health")
@@ -56,4 +58,5 @@ def compile_endpoint():
 
 
 if __name__ == "__main__":
+    # Dev: Werkzeug + flask-sock. Producao: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker
     app.run(host="0.0.0.0", port=5000)
