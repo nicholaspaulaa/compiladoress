@@ -297,7 +297,7 @@ body {
   display: flex;
   flex-direction: column;
   border: 3px solid var(--retro-border);
-  background: #1e1e1e;
+  background: var(--retro-bg-mid);
   box-shadow:
     0 0 16px rgba(0, 255, 136, 0.2),
     inset 0 0 24px rgba(92, 45, 145, 0.15);

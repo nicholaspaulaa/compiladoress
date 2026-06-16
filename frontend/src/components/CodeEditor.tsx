@@ -9,6 +9,10 @@ import {
   registerSimplesLanguage,
   SIMPLES_LANGUAGE_ID,
 } from "../lib/simples/registerSimplesLanguage";
+import {
+  registerSimplesTheme,
+  SIMPLES_THEME_ID,
+} from "../lib/simples/simples.theme";
 
 interface CodeEditorProps {
   value?: string;
@@ -17,6 +21,7 @@ interface CodeEditorProps {
 
 function handleEditorWillMount(monaco: Monaco) {
   registerSimplesLanguage(monaco);
+  registerSimplesTheme(monaco);
 }
 
 export function CodeEditor({
@@ -35,7 +40,7 @@ export function CodeEditor({
       <Editor
         height="100%"
         language={SIMPLES_LANGUAGE_ID}
-        theme="vs-dark"
+        theme={SIMPLES_THEME_ID}
         value={value}
         onChange={handleChange}
         beforeMount={handleEditorWillMount}
