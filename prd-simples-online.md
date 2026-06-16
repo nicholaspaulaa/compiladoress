@@ -2,33 +2,90 @@
 
 > **Product Requirements Document** — Web IDE para a linguagem **SIMPLES**
 > IFSULDEMINAS — Campus Poços de Caldas — Disciplina de Compiladores
-> Versão: 1.0 (rascunho) · Última atualização: 2026-05-05
+> Versão: 1.1 (revisão de formatação) · Última atualização: 2026-06-16
 
 ---
 
-## Sumário
+## Índice
 
 1. [Visão geral](#1-visão-geral)
 2. [Contexto e premissas](#2-contexto-e-premissas)
+   - [2.1 Contexto educacional](#21-contexto-educacional)
+   - [2.2 Premissas técnicas](#22-premissas-técnicas)
 3. [Personas e user stories](#3-personas-e-user-stories)
+   - [3.1 Personas](#31-personas)
+   - [3.2 User stories (escopo v1)](#32-user-stories-escopo-v1)
+   - [3.3 User stories fora de escopo v1](#33-user-stories-fora-de-escopo-v1-roadmap)
 4. [Escopo](#4-escopo)
+   - [4.1 Em escopo (v1)](#41-em-escopo-v1)
+   - [4.2 Fora de escopo (v1)](#42-fora-de-escopo-v1)
 5. [Requisitos funcionais](#5-requisitos-funcionais)
 6. [Requisitos não-funcionais](#6-requisitos-não-funcionais)
+   - [6.1 Performance](#61-performance)
+   - [6.2 Segurança](#62-segurança)
+   - [6.3 Escalabilidade](#63-escalabilidade)
+   - [6.4 Disponibilidade](#64-disponibilidade)
+   - [6.5 Observabilidade](#65-observabilidade)
 7. [Arquitetura](#7-arquitetura)
+   - [7.1 Visão de componentes](#71-visão-de-componentes)
+   - [7.2 Componentes](#72-componentes)
+   - [7.3 Fluxo de execução end-to-end](#73-fluxo-de-execução-end-to-end)
+   - [7.4 Padrões de projeto](#74-padrões-de-projeto-aplicados)
 8. [Stack técnica](#8-stack-técnica)
+   - [8.1 Frontend](#81-frontend)
+   - [8.2 Backend](#82-backend)
+   - [8.3 Compilador](#83-compilador-já-existente)
+   - [8.4 Infraestrutura](#84-infraestrutura)
 9. [API design — REST + WebSocket](#9-api-design--rest--websocket)
+   - [9.1 REST endpoints](#91-rest-endpoints)
+   - [9.2 WebSocket — `/ws/run`](#92-websocket--wsrun)
 10. [Modelo de dados (Supabase)](#10-modelo-de-dados-supabase)
+    - [10.1 v1 — apenas auth](#101-v1--apenas-auth)
+    - [10.2 Futuro v2 — schema previsto](#102-futuro-v2--schema-previsto)
 11. [Segurança e sandboxing](#11-segurança-e-sandboxing)
+    - [11.1 Autenticação e autorização](#111-autenticação-e-autorização)
+    - [11.2 Sandboxing por execução](#112-sandboxing-por-execução)
+    - [11.3 Timeouts em três camadas](#113-timeouts-em-três-camadas-defense-in-depth)
+    - [11.4 Rate limiting](#114-rate-limiting)
+    - [11.5 Input validation](#115-input-validation)
+    - [11.6 Threat model](#116-threat-model-resumido)
 12. [UI/UX](#12-uiux)
+    - [12.1 Layout (desktop ≥ 1280px)](#121-layout-desktop--1280px)
+    - [12.2 Comportamentos chave](#122-comportamentos-chave)
+    - [12.3 Estados visuais](#123-estados-visuais)
 13. [Editor de código (Monaco)](#13-editor-de-código-monaco)
+    - [13.1 Linguagem custom "simples"](#131-linguagem-custom-simples)
+    - [13.2 Erros de compilação como markers](#132-erros-de-compilação-como-markers)
+    - [13.3 Snippets](#133-snippets)
 14. [Docker Compose](#14-docker-compose)
+    - [14.1 Topologia](#141-topologia)
+    - [14.2 `docker-compose.yml`](#142-docker-composeyml-exemplo-de-referência)
+    - [14.3 `backend/Dockerfile`](#143-backenddockerfile)
+    - [14.4 `runner/Dockerfile`](#144-runnerdockerfile-sandbox-de-execução)
+    - [14.5 `frontend/Dockerfile`](#145-frontenddockerfile)
+    - [14.6 Deployment local](#146-deployment-local-desenvolvimento)
+    - [14.7 Deployment OCI (Ampere A1, ARM64)](#147-deployment-oracle-cloud-infrastructure-ampere-a1-arm64)
 15. [Nginx — reverse proxy](#15-nginx--reverse-proxy)
+    - [15.1 `nginx/nginx.conf`](#151-nginxnginxconf-essencial)
 16. [Observabilidade](#16-observabilidade)
+    - [16.1 Logs estruturados](#161-logs-estruturados-json)
+    - [16.2 Métricas Prometheus](#162-métricas-prometheus-metrics)
+    - [16.3 Health check](#163-health-check)
 17. [Estratégia de testes](#17-estratégia-de-testes)
+    - [17.1 Backend (pytest)](#171-backend-pytest)
+    - [17.2 Frontend (Vitest + RTL)](#172-frontend-vitest--react-testing-library)
+    - [17.3 E2E (Playwright)](#173-e2e-playwright--v11)
+    - [17.4 Compilador SIMPLES](#174-compilador-simples)
 18. [Roadmap](#18-roadmap)
 19. [Riscos e mitigações](#19-riscos-e-mitigações)
 20. [Critérios de aceite](#20-critérios-de-aceite)
 21. [Apêndices](#21-apêndices)
+    - [A. Exemplo completo — fatorial](#a-exemplo-completo-programa-fatorial)
+    - [B. `PtyExecutionStrategy` — esqueleto Python](#b-ptyexecutionstrategy--esqueleto-de-referência-python)
+    - [C. Variáveis de ambiente (`.env.example`)](#c-variáveis-de-ambiente-envexample)
+    - [D. Glossário](#d-glossário)
+    - [E. Referências](#e-referências)
+    - [F. Terraform — OCI Ampere A1](#f-terraform--provisionamento-oci-ampere-a1)
 
 ---
 
@@ -40,7 +97,9 @@
 - **Painel NASM x32** (direita, expansível/contrátil): mostra o assembly gerado pelo compilador `simplesc`, lado-a-lado com o código fonte.
 - **Terminal** (inferior): emulador de terminal real (xterm.js) conectado por WebSocket ao processo executado no servidor — suporta `leia` (stdin) e `escreva` (stdout) de forma interativa, igual a um terminal local.
 
-Toda a stack roda containerizada (Docker Compose) e fica atrás de um Nginx como reverse proxy. Autenticação via Supabase. O compilador `simplesc` (já existente, escrito em C, descrito no [PRD do compilador](https://www.notion.so/344a6259575b81098b28f3235354d86b)) é invocado pelo backend Flask, que orquestra o pipeline completo: `simplesc → nasm → ld → execução em sandbox`.
+Toda a stack roda containerizada (Docker Compose) e fica atrás de um Nginx como reverse proxy, com autenticação via Supabase.
+
+O compilador `simplesc` (já existente, escrito em C, descrito no [PRD do compilador](https://www.notion.so/344a6259575b81098b28f3235354d86b)) é invocado pelo backend Flask, que orquestra o pipeline completo: `simplesc → nasm → ld → execução em sandbox`.
 
 > **Analogia:** o sistema funciona como uma **cozinha industrial com vidro**. O aluno (cliente) escolhe um prato no cardápio (o código SIMPLES). A cozinha (o backend) prepara em três etapas — cortar (compilar), cozinhar (montar/linkar), empratar (executar) — tudo isolado por uma porta de vidro (o Docker sandbox). O cliente vê em tempo real, pelo vidro, o que está acontecendo (saída no terminal), pode interagir (passar sal pela janela = `leia`), e nunca encosta no fogão.
 
@@ -59,7 +118,9 @@ A IDE web elimina essa fricção: o aluno acessa, autentica, escreve e roda. O f
 - O compilador `simplesc` já existe e gera `.asm` válido para NASM 32-bit (ELF Linux), com syscalls `int 0x80`.
 - **Desenvolvimento local**: qualquer host (x86_64 ou ARM64 macOS/Linux) com Docker + Docker Compose v2 — o sistema sobe inteiro com `docker compose up` em localhost.
 - **Deploy de produção**: Oracle Cloud Infrastructure (OCI), instâncias **Ampere A1 (ARM64)** — Always Free tier permite até 4 OCPUs / 24 GB RAM gratuitos, suficientes pra v1.
-- **Atenção arquitetural**: o compilador `simplesc` gera binários **x86 32-bit (ELF i386)** com syscalls `int 0x80`. Esses binários **não rodam nativamente em ARM64**. A solução adotada é emulação user-mode via **`qemu-user-static`** dentro do container sandbox — o overhead típico é 5-10x, mas como os programas SIMPLES são pequenos (escopo didático), o impacto na latência percebida é desprezível para a maioria dos exemplos. O timeout de execução foi calibrado considerando esse fator.
+- **Atenção arquitetural**: o compilador `simplesc` gera binários **x86 32-bit (ELF i386)** com syscalls `int 0x80`. Esses binários **não rodam nativamente em ARM64**.
+
+  A solução adotada é emulação user-mode via **`qemu-user-static`** dentro do container sandbox. O overhead típico é de 5-10x, mas como os programas SIMPLES são pequenos (escopo didático), o impacto na latência percebida é desprezível para a maioria dos exemplos. O timeout de execução foi calibrado considerando esse fator.
 - Supabase (cloud, free tier inicial) é o provider de auth.
 - **A linguagem SIMPLES tem `leia` (stdin)** — isso obriga o uso de WebSocket + PTY para execução interativa. REST e SSE não são suficientes.
 
@@ -383,7 +444,7 @@ Todos os endpoints exigem `Authorization: Bearer <jwt>` (JWT do Supabase), excet
 { "type": "compile_started" }
 
 // Erro na fase de compilação SIMPLES
-{ "type": "compile_error", "phase": "lexer|parser|semantic", "line": 4, "column": 7, "message": "variavel 'y' nao declarada" }
+{ "type": "compile_error", "phase": "lexer|parser|semantic", "line": 4, "column": 7, "message": "variável 'y' não declarada" }
 
 // NASM gerado com sucesso — frontend popula o painel direito
 { "type": "asm_generated", "asm": "section .bss\n    x resd 1\n..." }
@@ -768,7 +829,9 @@ volumes:
 
 ### 14.3 `backend/Dockerfile`
 
-A imagem do backend precisa de **toolchain cross-target i386** para que `nasm` e `ld` produzam binários x86 32-bit independentemente da arquitetura do host (x86_64 em desenvolvimento local, ARM64 na Oracle Cloud Ampere A1). Usamos `binutils-i686-linux-gnu`, que provê `i686-linux-gnu-ld` funcionando idêntico em ambas arquiteturas — abordagem mais portável que `gcc-multilib`, que só existe em x86_64.
+A imagem do backend precisa de **toolchain cross-target i386** para que `nasm` e `ld` produzam binários x86 32-bit independentemente da arquitetura do host (x86_64 em desenvolvimento local, ARM64 na Oracle Cloud Ampere A1).
+
+Usamos `binutils-i686-linux-gnu`, que provê `i686-linux-gnu-ld` funcionando de forma idêntica em ambas as arquiteturas — uma abordagem mais portável que `gcc-multilib`, que só existe em x86_64.
 
 ```dockerfile
 # Funciona em x86_64 (dev local) e ARM64 (Oracle Cloud Ampere A1)
