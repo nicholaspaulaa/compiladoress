@@ -34,4 +34,15 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
       - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
       - COMPILE_TIMEOUT_S=${COMPILE_TIMEOUT_S:-15}
+      - SANDBOX_IMAGE=simples-runner:latest
     restart: on-failure
+
+  # Pseudo-serviço apenas para construir a imagem do sandbox de execução
+  # (PRD §14.4 — qemu-user-static para emulação i386 em hosts ARM64)
+  runner_image_build:
+    image: simples-runner:latest
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+    command: ["true"]     # sai imediatamente; só queremos a imagem construída
+    restart: "no"
