@@ -10,6 +10,7 @@ from typing import Callable
 from config import Config
 from pipeline import build_binary, cleanup_work_dir, compile_error_payload
 from ws_bridge import WsPtyBridge, start_pty_bridge
+from rate_limit import RATE_LIMIT_MESSAGE, check_execution_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,12 @@ class WsRunSession:
                 self.state.value,
                 self.user_id,
             )
+            return
+
+        # Rate limit: 30 execucoes/minuto por usuario (PRD RF18, issue #35)
+        # Conta cada compile_and_run, nao a conexao — mesmo bucket do HTTP POST /api/compile
+        if not check_execution_rate_limit(self.user_id):
+            self._send_json({"type": "rate_limited", "message": RATE_LIMIT_MESSAGE})
             return
 
         code, error = validate_compile_and_run(message)
