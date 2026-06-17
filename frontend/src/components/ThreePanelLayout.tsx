@@ -11,12 +11,13 @@ import { IdePanel } from "./IdePanel";
 interface ThreePanelLayoutProps {
   editor: ReactNode;
   nasm: ReactNode;
+  terminal: ReactNode;
 }
 
 const NASM_DEFAULT_SIZE = 35;
 const PANEL_STORAGE_ID = "simples-editor-nasm-panels";
 
-export function ThreePanelLayout({ editor, nasm }: ThreePanelLayoutProps) {
+export function ThreePanelLayout({ editor, nasm, terminal }: ThreePanelLayoutProps) {
   const nasmPanelRef = useRef<ImperativePanelHandle>(null);
   const nasmSizeBeforeCollapse = useRef(NASM_DEFAULT_SIZE);
 
@@ -70,7 +71,7 @@ export function ThreePanelLayout({ editor, nasm }: ThreePanelLayoutProps) {
         </Panel>
       </PanelGroup>
 
-      <TerminalPanel />
+      {terminal}
     </div>
   );
 }

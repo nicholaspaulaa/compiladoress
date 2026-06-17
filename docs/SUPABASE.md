@@ -27,13 +27,26 @@ Passos para criar o projeto de auth do **Simples Editor**.
 
 ## 4. Configurar localmente
 
+### Backend + Docker
+
 ```bash
 cp .env.example .env
-# Edite .env com os tres valores acima
+# Edite .env com SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_JWT_SECRET
 docker compose up --build
 ```
 
-O `docker-compose.yml` repassa as variaveis para o servico `backend`.
+O `docker-compose.yml` repassa as variaveis para o servico `backend` e para o build do `frontend`.
+
+### Frontend com `npm run dev`
+
+O Vite **nao le** o `.env` da raiz. Crie `frontend/.env.local` com prefixo **`VITE_`**:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+# Edite com os mesmos URL e anon key do Supabase
+```
+
+Reinicie o dev server apos alterar env (`Ctrl+C` e `npm run dev` de novo).
 
 ## 5. Testar JWT no backend (issue #7)
 

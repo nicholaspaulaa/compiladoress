@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import logging
+import os
 import select
+import tarfile
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -84,7 +87,7 @@ def get_sandbox_security_config() -> dict:
 
 
 def sandbox_run_kwargs() -> dict:
-    """Parametros de containers.run derivados de Config (DRY)."""
+    """Parametros de containers.create/run derivados de Config (DRY)."""
     return {
         "network_mode": "none",
         "read_only": True,
@@ -95,11 +98,33 @@ def sandbox_run_kwargs() -> dict:
         "pids_limit": Config.SANDBOX_PIDS_LIMIT,
         "user": Config.SANDBOX_USER,
         "cap_drop": ["ALL"],
-        "stop_timeout": Config.DOCKER_STOP_TIMEOUT_S,
         "stdin_open": True,
         "tty": True,
         "detach": True,
     }
+
+
+def _build_dir_tar(dir_path: str, *, dest_prefix: str = "") -> bytes:
+    """Empacota arquivos do build para put_archive no runner (sem bind mount do host)."""
+    stream = io.BytesIO()
+    with tarfile.open(fileobj=stream, mode="w") as tar:
+        for name in os.listdir(dir_path):
+            full = os.path.join(dir_path, name)
+            arcname = f"{dest_prefix}/{name}" if dest_prefix else name
+            info = tar.gettarinfo(full, arcname=arcname)
+            # Runner executa como nobody (65534) — arquivos precisam ser legiveis
+            info.uid = 65534
+            info.gid = 65534
+            info.mode = 0o755
+            with open(full, "rb") as handle:
+                tar.addfile(info, handle)
+    stream.seek(0)
+    return stream.read()
+
+
+def sandbox_staging_kwargs() -> dict:
+    """Kwargs do runner: rootfs gravavel para put_archive em /sandbox (WORKDIR da imagem)."""
+    return {**sandbox_run_kwargs(), "read_only": False}
 
 
 class ExecutionStrategy(ABC):
@@ -120,6 +145,7 @@ class PtyExecutionStrategy(ExecutionStrategy):
     """Executa binario i386 no simples-runner via qemu + attach_socket PTY."""
 
     QEMU_COMMAND = ["/usr/bin/qemu-i386-static", "/sandbox/programa"]
+    SANDBOX_DIR = "/sandbox"
     ATTACH_PARAMS = {"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1}
 
     def __init__(self, image: str | None = None, client=None):
@@ -144,12 +170,13 @@ class PtyExecutionStrategy(ExecutionStrategy):
         stopped = False
 
         try:
-            container = self.client.containers.run(
+            container = self.client.containers.create(
                 image=self.image,
                 command=self.QEMU_COMMAND,
-                volumes={binary_dir: {"bind": "/sandbox", "mode": "ro"}},
-                **sandbox_run_kwargs(),
+                **sandbox_staging_kwargs(),
             )
+            container.put_archive("/", _build_dir_tar(binary_dir, dest_prefix="sandbox"))
+            container.start()
             ACTIVE_SANDBOXES.inc()
 
             attach = container.attach_socket(params=self.ATTACH_PARAMS)

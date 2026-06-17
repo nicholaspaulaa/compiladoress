@@ -1,1 +1,1 @@
-export type RunState = "idle" | "compiling";
+export type RunState = "idle" | "compiling" | "executing";

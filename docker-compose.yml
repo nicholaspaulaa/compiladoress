@@ -28,6 +28,13 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "5000:5000"
+    volumes:
+      # PRD §14 — backend spawna containers sandbox via Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Diretorio compartilhado com o daemon (bind mounts para o runner)
+      - sandbox_work:/sandbox-work
+    depends_on:
+      - runner_image_build
     environment:
       - FLASK_ENV=development
       - SUPABASE_URL=${SUPABASE_URL:-}
@@ -37,6 +44,7 @@ services:
       - EXEC_TIMEOUT_S=${EXEC_TIMEOUT_S:-10}
       - DOCKER_STOP_TIMEOUT_S=${DOCKER_STOP_TIMEOUT_S:-12}
       - SANDBOX_IMAGE=simples-runner:latest
+      - SANDBOX_WORK_DIR=/sandbox-work
     restart: on-failure
 
   # Pseudo-serviço apenas para construir a imagem do sandbox de execução
@@ -48,3 +56,6 @@ services:
       dockerfile: Dockerfile
     command: ["true"]     # sai imediatamente; só queremos a imagem construída
     restart: "no"
+
+volumes:
+  sandbox_work:

@@ -11,32 +11,44 @@ export function IdeToolbar({
   onRun,
   statusMessage = null,
 }: IdeToolbarProps) {
-  const isCompiling = runState === "compiling";
+  const isBusy = runState !== "idle";
+
+  const runLabel =
+    runState === "compiling"
+      ? "COMPILANDO..."
+      : runState === "executing"
+        ? "EXECUTANDO..."
+        : "[ RUN ]";
+
+  const statusHint =
+    runState === "compiling"
+      ? "> compilando..."
+      : runState === "executing"
+        ? "> digite no terminal (leia)..."
+        : null;
 
   return (
     <div className="ide-toolbar" role="toolbar" aria-label="Ferramentas da IDE">
       <button
         type="button"
         onClick={onRun}
-        disabled={isCompiling}
+        disabled={isBusy}
         className="retro-btn retro-btn-sm ide-toolbar__run"
-        aria-busy={isCompiling}
+        aria-busy={isBusy}
       >
-        {isCompiling ? (
+        {isBusy ? (
           <>
             <span className="ide-toolbar__spinner" aria-hidden="true" />
-            COMPILANDO...
+            {runLabel}
           </>
         ) : (
           "[ RUN ]"
         )}
       </button>
-      {isCompiling && (
-        <span className="ide-toolbar__status retro-subtitle">
-          &gt; compilando...
-        </span>
+      {statusHint && (
+        <span className="ide-toolbar__status retro-subtitle">{statusHint}</span>
       )}
-      {!isCompiling && statusMessage && (
+      {!isBusy && statusMessage && (
         <span className="ide-toolbar__status ide-toolbar__status--error retro-subtitle">
           {statusMessage}
         </span>

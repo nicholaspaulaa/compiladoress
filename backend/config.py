@@ -36,6 +36,7 @@ class Config:
     SANDBOX_PIDS_LIMIT = int(os.environ.get("SANDBOX_PIDS_LIMIT", "64"))
     SANDBOX_TMPFS_SIZE_MB = int(os.environ.get("SANDBOX_TMPFS_SIZE_MB", "8"))
     SANDBOX_USER = os.environ.get("SANDBOX_USER", "65534:65534")
+    SANDBOX_WORK_DIR = os.environ.get("SANDBOX_WORK_DIR", "").strip()
 
     @classmethod
     def supabase_configured(cls) -> bool:
@@ -51,4 +52,5 @@ class Config:
 
     @classmethod
     def sandbox_tmpfs(cls) -> dict[str, str]:
-        return {"/tmp": f"size={cls.SANDBOX_TMPFS_SIZE_MB}m"}
+        size = f"size={cls.SANDBOX_TMPFS_SIZE_MB}m"
+        return {"/tmp": size}

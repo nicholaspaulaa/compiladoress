@@ -24,7 +24,8 @@ def cleanup_work_dir(work_dir: str | None) -> None:
 
 
 def create_work_dir() -> str:
-    base = tempfile.gettempdir()
+    base = Config.SANDBOX_WORK_DIR or tempfile.gettempdir()
+    os.makedirs(base, exist_ok=True)
     path = os.path.join(base, f"sim-{uuid.uuid4().hex}")
     os.makedirs(path, mode=0o700)
     return path
