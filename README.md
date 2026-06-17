@@ -14,6 +14,8 @@ O ambiente oferece três painéis: editor com syntax highlighting, visualizaçã
 | [SPRINTS.md](./SPRINTS.md) | Plano de 6 sprints e entregáveis |
 | [PROGRESS.md](./PROGRESS.md) | Checklist das issues do GitHub |
 | [docs/SUPABASE.md](./docs/SUPABASE.md) | Criar projeto Supabase e variáveis `.env` |
+| [docs/SECURITY-AUDIT.md](./docs/SECURITY-AUDIT.md) | Auditoria de segurança do sandbox (camadas de hardening) |
+| [docs/INCIDENTS.md](./docs/INCIDENTS.md) | Plano de resposta a incidentes (escape, vazamento, P1/P2) |
 | [compiler/](./compiler/) | Compilador `simplesc` (C) — fork em [simples-compiler](https://github.com/nicholaspaulaa/simples-compiler) |
 | [compiler/UPSTREAM.md](./compiler/UPSTREAM.md) | Como sincronizar o fork com esta pasta |
 
