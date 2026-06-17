@@ -11,6 +11,7 @@ import {
 } from "../components/TerminalPanel";
 import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
+import { verifyAuth } from "../lib/api";
 import type { CompileError } from "../lib/compileTypes";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
 import {
@@ -77,6 +78,21 @@ export function HomePage() {
     const token = await getAccessToken();
     if (!token) {
       setToolbarStatus("> Sessao expirada — faca login novamente");
+      setRunState("idle");
+      return;
+    }
+
+    try {
+      await verifyAuth();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Falha ao verificar sessao";
+      const hint = message.includes("fetch")
+        ? "Backend indisponivel — suba: cd backend && python app.py"
+        : message;
+      setToolbarStatus(`> ${hint}`);
+      terminalRef.current?.clear();
+      terminalRef.current?.writeln(`> ${hint}`);
       setRunState("idle");
       return;
     }

@@ -138,7 +138,26 @@ class WsRunSession:
         self._send_json({"type": "asm_generated", "asm": result["asm"]})
         self.work_dir = result["work_dir"]
         self.state = WsState.EXECUTING
-        self.bridge, self.exec_thread = start_pty_bridge(self._send_json, self.work_dir)
+        try:
+            self.bridge, self.exec_thread = start_pty_bridge(
+                self._send_json,
+                self.work_dir,
+            )
+        except Exception as exc:
+            logger.exception("Falha ao iniciar execucao user_id=%s", self.user_id)
+            self._send_json(
+                {
+                    "type": "internal_error",
+                    "message": (
+                        f"Falha ao iniciar sandbox: {exc}. "
+                        "Verifique Docker Desktop e a imagem simples-runner:latest."
+                    ),
+                }
+            )
+            cleanup_work_dir(self.work_dir)
+            self.work_dir = None
+            self.state = WsState.IDLE
+            return
         logger.info("Execucao iniciada user_id=%s work_dir=%s", self.user_id, self.work_dir)
 
     def _emit_build_failure(self, result: dict) -> None:

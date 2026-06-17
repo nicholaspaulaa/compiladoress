@@ -94,9 +94,11 @@ export function createWsRunConnection(
   };
 
   const url = buildWsRunUrl(token);
+  let opened = false;
   ws = new WebSocket(url);
 
   ws.onopen = () => {
+    opened = true;
     flushPendingCompile();
   };
 
@@ -110,14 +112,21 @@ export function createWsRunConnection(
   };
 
   ws.onerror = () => {
-    if (!closed) {
-      handlers.onInternalError("Falha na conexao WebSocket");
-    }
+    // Mensagem detalhada vem em onclose (code/reason)
   };
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     if (!closed) {
       setExecuting(false);
+      if (!opened) {
+        handlers.onInternalError(
+          "Backend indisponivel — suba o servidor: cd backend && python app.py (porta 5000)",
+        );
+      } else if (event.code !== 1000 && event.code !== 1001 && event.code !== 4403) {
+        handlers.onInternalError(
+          `WebSocket fechou inesperadamente (code=${event.code})`,
+        );
+      }
       handlers.onDisconnected();
     }
   };
