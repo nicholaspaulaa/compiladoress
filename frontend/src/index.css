@@ -294,7 +294,7 @@ body {
 
 .ide-toolbar {
   position: relative;
-  z-index: 10;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -451,4 +451,9 @@ body {
   justify-content: center;
   height: 100%;
   font-size: 1.25rem;
+}
+
+/* Monaco — hover de erros acima do header/toolbar (linha 1) */
+.monaco-hover {
+  z-index: 2000 !important;
 }
