@@ -1,9 +1,9 @@
 import type { editor } from "monaco-editor";
 
-export const DEFAULT_SIMPLES_CODE = `programa exemplo;
+export const DEFAULT_SIMPLES_CODE = `programa demo
 inicio
-  escreva("Ola, SIMPLES!");
-fim.
+  escreva "Ola, SIMPLES!";
+fim
 `;
 
 const sharedEditorOptions: editor.IStandaloneEditorConstructionOptions = {
