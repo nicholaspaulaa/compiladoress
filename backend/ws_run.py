@@ -13,6 +13,7 @@ from ws_auth import WS_CLOSE_POLICY, authenticate_ws_token, extract_ws_token_fro
 from ws_bridge import WsPtyBridge, start_pty_bridge
 from ws_protocol import WsRunSession
 from metrics import WEBSOCKET_CONNECTIONS
+from rate_limit import RATE_LIMIT_MESSAGE, ws_check_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,16 @@ def ws_run(ws):
     g.user_id = payload["sub"]
     g.user_email = payload.get("email")
     g.jwt_payload = payload
+
+    # Rate limit: 30 execucoes/minuto por usuario (PRD RF18, issue #35)
+    if not ws_check_rate_limit(g.user_id):
+        outbound.enqueue({"type": "internal_error", "message": RATE_LIMIT_MESSAGE})
+        try:
+            outbound.flush()
+        except Exception:
+            logger.debug("Nao foi possivel enviar rate_limit antes do close WS")
+        _reject_ws(ws, RATE_LIMIT_MESSAGE)
+        return
 
     logger.info("WebSocket /ws/run conectado user_id=%s", g.user_id)
 

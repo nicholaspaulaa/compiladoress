@@ -4,10 +4,12 @@ from auth import verify_jwt
 from compile import compile_code
 from config import Config
 from metrics import metrics_response
+from rate_limit import limiter, ratelimit_error_response
 from ws_run import sock, ws_run  # noqa: F401 — registra rota via decorator
 
 app = Flask(__name__)
 sock.init_app(app)
+limiter.init_app(app)
 
 
 @app.route("/metrics")
@@ -47,6 +49,7 @@ def auth_verify():
 
 @app.route("/api/compile", methods=["POST"])
 @verify_jwt
+@limiter.limit("30 per minute")
 def compile_endpoint():
     """Compila codigo SIMPLES e retorna NASM ou erros estruturados (PRD §9.1, RF05)."""
     body = request.get_json(silent=True)
@@ -63,6 +66,12 @@ def compile_endpoint():
         return jsonify({"asm": result["asm"]}), 200
 
     return jsonify({"errors": result["errors"]}), 422
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Retorna 429 padronizado quando rate limit e excedido (PRD §6.2, issue #35)."""
+    return ratelimit_error_response()
 
 
 if __name__ == "__main__":

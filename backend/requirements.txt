@@ -1,6 +1,7 @@
 Flask==2.3.3
 PyJWT[crypto]==2.8.0
 docker==7.1.0
+flask-limiter==3.10.1
 flask-sock==0.7.0
 prometheus-client==0.21.1
 simple-websocket==1.0.0
