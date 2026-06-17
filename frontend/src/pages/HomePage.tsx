@@ -4,19 +4,26 @@ import { useNavigate } from "react-router-dom";
 import { CodeEditor } from "../components/CodeEditor";
 import { IdeLayout } from "../components/IdeLayout";
 import { IdeToolbar } from "../components/IdeToolbar";
+import { NasmViewer } from "../components/NasmViewer";
 import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { compileSimples } from "../lib/compileApi";
 import type { CompileError } from "../lib/compileTypes";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
+import {
+  DEFAULT_NASM_PLACEHOLDER,
+  formatCompileErrorsForNasm,
+} from "../lib/nasm/nasmConfig";
 import type { RunState } from "../lib/runState";
 
 export function HomePage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState(DEFAULT_SIMPLES_CODE);
+  const [nasmCode, setNasmCode] = useState(DEFAULT_NASM_PLACEHOLDER);
   const [compileErrors, setCompileErrors] = useState<CompileError[]>([]);
   const [runState, setRunState] = useState<RunState>("idle");
+  const [toolbarStatus, setToolbarStatus] = useState<string | null>(null);
 
   async function handleSignOut() {
     await signOut();
@@ -26,6 +33,7 @@ export function HomePage() {
   const handleCodeChange = useCallback((nextCode: string) => {
     setCode(nextCode);
     setCompileErrors([]);
+    setToolbarStatus(null);
   }, []);
 
   const handleRun = useCallback(async () => {
@@ -34,28 +42,32 @@ export function HomePage() {
     }
 
     setRunState("compiling");
+    setToolbarStatus(null);
 
     try {
       const result = await compileSimples(code);
 
       if (result.success) {
         setCompileErrors([]);
+        setNasmCode(result.asm);
         return;
       }
 
-      setCompileErrors(result.errors);
+      if (result.source === "compiler") {
+        setCompileErrors(result.errors);
+        setNasmCode(formatCompileErrorsForNasm(result.errors));
+        return;
+      }
+
+      setCompileErrors([]);
+      setToolbarStatus(`> ${result.errors[0]?.message ?? "Erro de servidor"}`);
     } catch (error) {
-      setCompileErrors([
-        {
-          phase: "server",
-          line: 0,
-          column: 0,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Falha ao comunicar com o servidor",
-        },
-      ]);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Falha ao comunicar com o servidor";
+      setCompileErrors([]);
+      setToolbarStatus(`> ${message}`);
     } finally {
       setRunState("idle");
     }
@@ -87,7 +99,13 @@ export function HomePage() {
           </div>
         </header>
       }
-      toolbar={<IdeToolbar runState={runState} onRun={handleRun} />}
+      toolbar={
+        <IdeToolbar
+          runState={runState}
+          onRun={handleRun}
+          statusMessage={toolbarStatus}
+        />
+      }
     >
       <ThreePanelLayout
         editor={
@@ -97,6 +115,7 @@ export function HomePage() {
             compileErrors={compileErrors}
           />
         }
+        nasm={<NasmViewer value={nasmCode} />}
       />
     </IdeLayout>
   );

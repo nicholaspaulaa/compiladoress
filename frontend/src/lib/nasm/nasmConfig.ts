@@ -1,3 +1,5 @@
+import type { CompileError } from "../compileTypes";
+
 export const DEFAULT_NASM_PLACEHOLDER = `; NASM x32 — aguardando compilacao do codigo SIMPLES
 ; O assembly gerado pelo simplesc aparecera aqui apos Run.
 
@@ -26,3 +28,17 @@ _start:
     xor ebx, ebx
     int 0x80
 `;
+
+export function formatCompileErrorsForNasm(errors: CompileError[]): string {
+  const lines = errors.map((error) => {
+    const location =
+      error.line > 0
+        ? ` linha ${error.line}${error.column > 0 ? `, col ${error.column}` : ""}`
+        : "";
+    const phase =
+      error.phase && error.phase !== "unknown" ? `[${error.phase}]` : "[erro]";
+    return `; ${phase}${location}: ${error.message}`;
+  });
+
+  return ["; --- erro de compilacao ---", ...lines].join("\n");
+}
