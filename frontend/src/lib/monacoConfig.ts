@@ -18,6 +18,7 @@ const sharedEditorOptions: editor.IStandaloneEditorConstructionOptions = {
   padding: { top: 12, bottom: 12 },
   renderLineHighlight: "all",
   smoothScrolling: true,
+  fixedOverflowWidgets: true,
 };
 
 export const editorOptions: editor.IStandaloneEditorConstructionOptions = {

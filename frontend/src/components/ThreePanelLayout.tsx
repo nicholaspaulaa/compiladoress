@@ -7,7 +7,6 @@ import {
 } from "react-resizable-panels";
 
 import { IdePanel } from "./IdePanel";
-import { TerminalPanelPlaceholder } from "./TerminalPanelPlaceholder";
 
 interface ThreePanelLayoutProps {
   editor: ReactNode;
@@ -71,7 +70,7 @@ export function ThreePanelLayout({ editor, nasm }: ThreePanelLayoutProps) {
         </Panel>
       </PanelGroup>
 
-      <TerminalPanelPlaceholder />
+      <TerminalPanel />
     </div>
   );
 }

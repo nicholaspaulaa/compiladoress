@@ -294,7 +294,7 @@ body {
 
 .ide-toolbar {
   position: relative;
-  z-index: 10;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -431,18 +431,17 @@ body {
 .terminal-panel__host {
   flex: 1;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1rem;
+  padding: 0.35rem 0.5rem 0.5rem;
   background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
-.terminal-panel__placeholder {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--retro-text-dim);
-  text-align: center;
+.terminal-panel__host .xterm {
+  height: 100%;
+}
+
+.terminal-panel__host .xterm-viewport {
+  border-radius: 2px;
 }
 
 .ide-editor-host {
@@ -457,4 +456,9 @@ body {
   justify-content: center;
   height: 100%;
   font-size: 1.25rem;
+}
+
+/* Monaco — hover de erros acima do header/toolbar (linha 1) */
+.monaco-hover {
+  z-index: 2000 !important;
 }
