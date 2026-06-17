@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { CodeEditor } from "../components/CodeEditor";
@@ -6,40 +6,60 @@ import { IdeLayout } from "../components/IdeLayout";
 import { IdeToolbar } from "../components/IdeToolbar";
 import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
+import { compileSimples } from "../lib/compileApi";
+import type { CompileError } from "../lib/compileTypes";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
-import { MOCK_COMPILE_MS, type RunState } from "../lib/runState";
+import type { RunState } from "../lib/runState";
 
 export function HomePage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState(DEFAULT_SIMPLES_CODE);
+  const [compileErrors, setCompileErrors] = useState<CompileError[]>([]);
   const [runState, setRunState] = useState<RunState>("idle");
-  const compileTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (compileTimerRef.current !== null) {
-        window.clearTimeout(compileTimerRef.current);
-      }
-    };
-  }, []);
 
   async function handleSignOut() {
     await signOut();
     navigate("/login", { replace: true });
   }
 
-  const handleRun = useCallback(() => {
+  const handleCodeChange = useCallback((nextCode: string) => {
+    setCode(nextCode);
+    setCompileErrors([]);
+  }, []);
+
+  const handleRun = useCallback(async () => {
     if (runState === "compiling") {
       return;
     }
 
     setRunState("compiling");
-    compileTimerRef.current = window.setTimeout(() => {
+
+    try {
+      const result = await compileSimples(code);
+
+      if (result.success) {
+        setCompileErrors([]);
+        return;
+      }
+
+      setCompileErrors(result.errors);
+    } catch (error) {
+      setCompileErrors([
+        {
+          phase: "server",
+          line: 0,
+          column: 0,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Falha ao comunicar com o servidor",
+        },
+      ]);
+    } finally {
       setRunState("idle");
-      compileTimerRef.current = null;
-    }, MOCK_COMPILE_MS);
-  }, [runState]);
+    }
+  }, [code, runState]);
 
   return (
     <IdeLayout
@@ -70,7 +90,13 @@ export function HomePage() {
       toolbar={<IdeToolbar runState={runState} onRun={handleRun} />}
     >
       <ThreePanelLayout
-        editor={<CodeEditor value={code} onChange={setCode} />}
+        editor={
+          <CodeEditor
+            value={code}
+            onChange={handleCodeChange}
+            compileErrors={compileErrors}
+          />
+        }
       />
     </IdeLayout>
   );

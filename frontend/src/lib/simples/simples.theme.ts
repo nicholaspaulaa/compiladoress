@@ -47,6 +47,9 @@ export function registerSimplesTheme(monaco: Monaco): void {
       "input.border": simplesPalette.purple,
       "scrollbarSlider.background": "#5c2d9166",
       "scrollbarSlider.hoverBackground": "#9b4dff66",
+      "editorError.foreground": simplesPalette.error,
+      "editorError.border": simplesPalette.error,
+      "editorOverviewRuler.errorForeground": simplesPalette.error,
     },
   });
 

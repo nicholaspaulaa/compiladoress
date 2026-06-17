@@ -28,7 +28,7 @@ export function IdeToolbar({ runState, onRun }: IdeToolbarProps) {
       </button>
       {isCompiling && (
         <span className="ide-toolbar__status retro-subtitle">
-          &gt; compilando (mock sprint 2)
+          &gt; compilando...
         </span>
       )}
     </div>
