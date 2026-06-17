@@ -1,6 +1,9 @@
-import Editor, { type Monaco } from "@monaco-editor/react";
-import { useCallback } from "react";
+import Editor, { type Monaco, type OnMount } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
+import { useCallback, useEffect, useRef } from "react";
 
+import type { CompileError } from "../lib/compileTypes";
+import { setCompileMarkers } from "../lib/compileMarkers";
 import {
   DEFAULT_SIMPLES_CODE,
   editorOptions,
@@ -17,6 +20,7 @@ import {
 interface CodeEditorProps {
   value?: string;
   onChange?: (value: string) => void;
+  compileErrors?: CompileError[];
 }
 
 function handleEditorWillMount(monaco: Monaco) {
@@ -27,7 +31,26 @@ function handleEditorWillMount(monaco: Monaco) {
 export function CodeEditor({
   value = DEFAULT_SIMPLES_CODE,
   onChange,
+  compileErrors = [],
 }: CodeEditorProps) {
+  const monacoRef = useRef<Monaco | null>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+  const handleMount: OnMount = useCallback((editorInstance, monaco) => {
+    editorRef.current = editorInstance;
+    monacoRef.current = monaco;
+  }, []);
+
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    const editorInstance = editorRef.current;
+    if (!monaco || !editorInstance) {
+      return;
+    }
+
+    setCompileMarkers(monaco, editorInstance.getModel(), compileErrors);
+  }, [compileErrors]);
+
   const handleChange = useCallback(
     (nextValue: string | undefined) => {
       onChange?.(nextValue ?? "");
@@ -44,6 +67,7 @@ export function CodeEditor({
         value={value}
         onChange={handleChange}
         beforeMount={handleEditorWillMount}
+        onMount={handleMount}
         options={editorOptions}
         loading={
           <div className="ide-editor-loading retro-subtitle">
