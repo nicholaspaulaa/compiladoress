@@ -8,7 +8,7 @@ import {
 
 import { IdePanel } from "./IdePanel";
 import { NasmViewer } from "./NasmViewer";
-import { TerminalPanelPlaceholder } from "./TerminalPanelPlaceholder";
+import { TerminalPanel } from "./TerminalPanel";
 
 interface ThreePanelLayoutProps {
   editor: ReactNode;
@@ -71,7 +71,7 @@ export function ThreePanelLayout({ editor }: ThreePanelLayoutProps) {
         </Panel>
       </PanelGroup>
 
-      <TerminalPanelPlaceholder />
+      <TerminalPanel />
     </div>
   );
 }
