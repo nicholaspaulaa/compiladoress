@@ -14,6 +14,12 @@ export function registerSimplesTheme(monaco: Monaco): void {
     inherit: true,
     rules: [
       { token: "keyword", foreground: simplesPalette.green, fontStyle: "bold" },
+      {
+        token: "keyword.instruction",
+        foreground: simplesPalette.greenGlow,
+        fontStyle: "bold",
+      },
+      { token: "type", foreground: simplesPalette.purpleBright },
       { token: "identifier", foreground: simplesPalette.textDim },
       { token: "number", foreground: simplesPalette.orange },
       { token: "number.float", foreground: simplesPalette.orange },
