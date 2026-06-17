@@ -118,8 +118,8 @@
 
 1. **Investigar** (15 min)
    ```bash
-   # Verificar métricas
-   curl http://localhost:5000/metrics | grep -E "compile_requests|websocket_connections"
+   # Verificar metricas (nomes reais em backend/metrics.py)
+   curl http://localhost:5000/metrics | grep -E "simples_executions_total|simples_websocket_connections|simples_compile_errors_total"
 
    # Verificar logs do backend
    docker compose logs backend | grep -E "429|rate_limit|invalid token"
