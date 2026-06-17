@@ -7,17 +7,16 @@ import {
 } from "react-resizable-panels";
 
 import { IdePanel } from "./IdePanel";
-import { NasmViewer } from "./NasmViewer";
-import { TerminalPanel } from "./TerminalPanel";
 
 interface ThreePanelLayoutProps {
   editor: ReactNode;
+  nasm: ReactNode;
 }
 
 const NASM_DEFAULT_SIZE = 35;
 const PANEL_STORAGE_ID = "simples-editor-nasm-panels";
 
-export function ThreePanelLayout({ editor }: ThreePanelLayoutProps) {
+export function ThreePanelLayout({ editor, nasm }: ThreePanelLayoutProps) {
   const nasmPanelRef = useRef<ImperativePanelHandle>(null);
   const nasmSizeBeforeCollapse = useRef(NASM_DEFAULT_SIZE);
 
@@ -67,7 +66,7 @@ export function ThreePanelLayout({ editor }: ThreePanelLayoutProps) {
           collapsible
           className="ide-panel-wrapper"
         >
-          <NasmViewer />
+          {nasm}
         </Panel>
       </PanelGroup>
 

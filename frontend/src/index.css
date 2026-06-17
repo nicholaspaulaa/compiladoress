@@ -321,6 +321,11 @@ body {
   letter-spacing: 0.06em;
 }
 
+.ide-toolbar__status--error {
+  color: var(--retro-error, #ff4d8a);
+  max-width: min(48rem, 70vw);
+}
+
 .ide-toolbar__spinner {
   display: inline-block;
   width: 0.75rem;

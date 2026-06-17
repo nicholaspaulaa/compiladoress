@@ -6,6 +6,8 @@ export interface CompileError {
   limit_s?: number;
 }
 
+export type CompileFailureSource = "compiler" | "http" | "network";
+
 export type CompileResult =
   | { success: true; asm: string }
-  | { success: false; errors: CompileError[] };
+  | { success: false; errors: CompileError[]; source: CompileFailureSource };

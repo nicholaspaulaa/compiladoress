@@ -3,9 +3,14 @@ import type { RunState } from "../lib/runState";
 interface IdeToolbarProps {
   runState: RunState;
   onRun: () => void;
+  statusMessage?: string | null;
 }
 
-export function IdeToolbar({ runState, onRun }: IdeToolbarProps) {
+export function IdeToolbar({
+  runState,
+  onRun,
+  statusMessage = null,
+}: IdeToolbarProps) {
   const isCompiling = runState === "compiling";
 
   return (
@@ -29,6 +34,11 @@ export function IdeToolbar({ runState, onRun }: IdeToolbarProps) {
       {isCompiling && (
         <span className="ide-toolbar__status retro-subtitle">
           &gt; compilando...
+        </span>
+      )}
+      {!isCompiling && statusMessage && (
+        <span className="ide-toolbar__status ide-toolbar__status--error retro-subtitle">
+          {statusMessage}
         </span>
       )}
     </div>
