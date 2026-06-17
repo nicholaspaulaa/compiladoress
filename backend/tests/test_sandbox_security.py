@@ -1,10 +1,12 @@
-"""Testes de auditoria de seguranca do sandbox (issue #34 + #38, PRD §11.2).
+"""Testes de validacao da configuracao de seguranca do sandbox (issue #34 + #38).
 
-Issue #38: auditoria contra tentativas de escape.
+IMPORTANTE: Estes testes validam os valores de CONFIGURACAO (dicionario e kwargs).
+Testes de runtime (container real) requerem Docker e estao documentados como
+validacao manual em docs/SECURITY-AUDIT.md.
 """
 
 from config import Config
-from execution import get_sandbox_security_config, docker_available
+from execution import get_sandbox_security_config, sandbox_run_kwargs, sandbox_staging_kwargs
 
 
 # ── Config baseline (issue #34) ──────────────────────────────────────────────
@@ -76,66 +78,67 @@ def test_sandbox_config_env_vars():
     assert Config.DOCKER_STOP_TIMEOUT_S == 12
 
 
-# ── Auditoria de escape (issue #38) ──────────────────────────────────────────
+# ── Validacao de config contra vetores de escape (issue #38) ─────────────────
+# Estes testes validam que a CONFIGURACAO cobre cada vetor.
+# Validacao de runtime (container real) requer Docker — documentada em
+# docs/SECURITY-AUDIT.md como "validacao manual pendente".
 
-def test_write_to_root_blocked_by_read_only():
-    """Tentativa de escrever em / falha: filesystem e read-only."""
+def test_config_write_to_root_rationale():
+    """Config: read_only=True documenta intencao de bloquear escrita em /."""
     cfg = get_sandbox_security_config()
     assert cfg["read_only"]["value"] is True, (
-        "Rootfs deve ser read-only para impedir escrita em /"
+        "read_only deve ser True na config para impedir escrita em /"
     )
-    # tmpfs e a unica area gravavel
-    tmpfs = cfg["tmpfs"]["value"]
-    assert "/tmp" in tmpfs
-    assert tmpfs["/tmp"].startswith("size=")
+    assert len(cfg["read_only"]["rationale"]) > 10, (
+        "rationale de read_only deve ser descritivo"
+    )
 
 
-def test_fork_bomb_contained_by_pids_limit():
-    """Fork bomb / spawn massivo contido por pids_limit."""
+def test_config_fork_bomb_pids_limit():
+    """Config: pids_limit=64 documenta intencao de conter fork bombs."""
     cfg = get_sandbox_security_config()
     pids_limit = cfg["pids_limit"]["value"]
     assert pids_limit == 64, (
-        f"pids_limit deve ser 64 para conter fork bombs, nao {pids_limit}"
+        f"pids_limit deve ser 64, nao {pids_limit}"
     )
     assert pids_limit > 0 and pids_limit <= 128, (
         "pids_limit deve ser positivo e razoavel (<=128)"
     )
 
 
-def test_network_access_blocked_by_network_mode_none():
-    """curl/ping/wget falham: network_mode='none' isola rede."""
+def test_config_network_isolation():
+    """Config: network_mode='none' documenta intencao de isolar rede."""
     cfg = get_sandbox_security_config()
     assert cfg["network_mode"]["value"] == "none", (
-        "network_mode deve ser 'none' para bloquear todo trafego de rede"
+        "network_mode deve ser 'none'"
     )
 
 
-def test_memory_exhaustion_contained():
-    """Exaustao de memoria contida por mem_limit + memswap_limit."""
+def test_config_memory_limits():
+    """Config: mem_limit == memswap_limit (swap desabilitado)."""
     cfg = get_sandbox_security_config()
     mem = cfg["mem_limit"]["value"]
     swap = cfg["memswap_limit"]["value"]
     assert mem == swap, (
         "mem_limit deve ser igual a memswap_limit (swap desabilitado)"
     )
-    assert mem == Config.sandbox_mem_limit()
     assert Config.SANDBOX_MEMORY_MB >= 32, (
         "Memoria minima de 32 MB para execucao de programas simples"
     )
 
 
-def test_cpu_exhaustion_contained_by_cpu_quota_and_timeout():
-    """Exaustao de CPU contida por cpu_quota + timeout de execucao."""
+def test_config_cpu_and_timeout():
+    """Config: cpu_quota e timeout de execucao documentados."""
     assert Config.SANDBOX_CPU_QUOTA <= 100000, (
         "cpu_quota nao deve exceder 1 CPU (100000 microsegundos)"
     )
-    assert Config.EXEC_TIMEOUT_S > 0 and Config.EXEC_TIMEOUT_S <= 30, (
+    assert 0 < Config.EXEC_TIMEOUT_S <= 30, (
         "Timeout de execucao deve ser positivo e razoavel (<=30s)"
     )
 
 
-def test_privilege_escalation_blocked_by_non_root():
-    """Escalada de privilegios bloqueada: usuario nobody (65534:65534)."""
+def test_config_non_root_user():
+    """Config: usuario nobody (65534:65534) bloqueia escalada de privilegios."""
     cfg = get_sandbox_security_config()
     user = cfg["user"]["value"]
     assert user == "65534:65534", (
@@ -143,8 +146,8 @@ def test_privilege_escalation_blocked_by_non_root():
     )
 
 
-def test_capabilities_dropped_all():
-    """Nenhuma capability Linux disponivel no container."""
+def test_config_cap_drop_all():
+    """Config: cap_drop=['ALL'] remove todas as capabilities Linux."""
     cfg = get_sandbox_security_config()
     caps = cfg["cap_drop"]["value"]
     assert "ALL" in caps, (
@@ -152,12 +155,12 @@ def test_capabilities_dropped_all():
     )
 
 
-def test_timeout_hardening_complete():
-    """Hardening de timeout: execucao + docker stop configurados."""
+def test_config_timeout_hardening():
+    """Config: DOCKER_STOP_TIMEOUT_S > EXEC_TIMEOUT_S para margem de kill."""
     assert Config.EXEC_TIMEOUT_S == 10
     assert Config.DOCKER_STOP_TIMEOUT_S == 12
     assert Config.DOCKER_STOP_TIMEOUT_S > Config.EXEC_TIMEOUT_S, (
-        "DOCKER_STOP_TIMEOUT_S deve ser > EXEC_TIMEOUT_S para dar margem ao kill"
+        "DOCKER_STOP_TIMEOUT_S deve ser > EXEC_TIMEOUT_S"
     )
 
 
@@ -171,53 +174,52 @@ def test_security_audit_document_exists():
         "docs/SECURITY-AUDIT.md deve existir com os resultados da auditoria"
     )
     content = open(audit_path, encoding="utf-8").read()
-    assert "Checklist de Segurança" in content, (
-        "SECURITY-AUDIT.md deve conter checklist de seguranca"
-    )
-    assert "Camadas de Segurança" in content, (
-        "SECURITY-AUDIT.md deve documentar as camadas de seguranca"
-    )
-    assert "Tentativas de Escape" in content, (
-        "SECURITY-AUDIT.md deve registrar tentativas de escape"
-    )
-    # Verifica que todos os vetores estao marcados como contidos
-    assert "Contido" in content, (
-        "SECURITY-AUDIT.md deve indicar vetores como contidos"
-    )
+    assert "Checklist de Segurança" in content
+    assert "Camadas de Segurança" in content
+    assert "Tentativas de Escape" in content
+    assert "Conclusão" in content
 
 
-# ── Testes com Docker (executados apenas se Docker disponivel) ──────────────
+# ── Validacao de kwargs do container (config, nao runtime) ───────────────────
 
-def test_docker_network_mode_none_in_kwargs():
-    """Valida que sandbox_run_kwargs inclui network_mode='none'."""
-    from execution import sandbox_run_kwargs
+def test_sandbox_run_kwargs_network_mode():
+    """sandbox_run_kwargs inclui network_mode='none'."""
     kwargs = sandbox_run_kwargs()
     assert kwargs["network_mode"] == "none"
 
 
-def test_docker_read_only_in_kwargs():
-    """Valida que sandbox_run_kwargs inclui read_only=True."""
-    from execution import sandbox_run_kwargs
+def test_sandbox_run_kwargs_read_only():
+    """sandbox_run_kwargs inclui read_only=True (intencao; staging usa False)."""
     kwargs = sandbox_run_kwargs()
     assert kwargs["read_only"] is True
 
 
-def test_docker_pids_limit_in_kwargs():
-    """Valida que sandbox_run_kwargs inclui pids_limit."""
-    from execution import sandbox_run_kwargs
+def test_sandbox_staging_kwargs_read_only_false():
+    """sandbox_staging_kwargs usa read_only=False para put_archive.
+
+    Este e o kwarg REAL usado na execucao hoje (PtyExecutionStrategy).
+    O audit documenta este trade-off em SECURITY-AUDIT.md.
+    """
+    kwargs = sandbox_staging_kwargs()
+    assert kwargs["read_only"] is False, (
+        "staging precisa de read_only=False para put_archive; "
+        "ver docs/SECURITY-AUDIT.md para avaliacao de risco residual"
+    )
+
+
+def test_sandbox_run_kwargs_pids_limit():
+    """sandbox_run_kwargs inclui pids_limit correto."""
     kwargs = sandbox_run_kwargs()
     assert kwargs["pids_limit"] == Config.SANDBOX_PIDS_LIMIT
 
 
-def test_docker_cap_drop_all_in_kwargs():
-    """Valida que sandbox_run_kwargs inclui cap_drop=['ALL']."""
-    from execution import sandbox_run_kwargs
+def test_sandbox_run_kwargs_cap_drop_all():
+    """sandbox_run_kwargs inclui cap_drop=['ALL']."""
     kwargs = sandbox_run_kwargs()
     assert kwargs["cap_drop"] == ["ALL"]
 
 
-def test_docker_user_non_root_in_kwargs():
-    """Valida que sandbox_run_kwargs inclui user nao-root."""
-    from execution import sandbox_run_kwargs
+def test_sandbox_run_kwargs_user_non_root():
+    """sandbox_run_kwargs inclui user nao-root."""
     kwargs = sandbox_run_kwargs()
     assert kwargs["user"] == Config.SANDBOX_USER

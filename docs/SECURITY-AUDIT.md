@@ -8,8 +8,12 @@
 ## Resumo
 
 O sandbox `simples-runner` implementa 8 camadas de hardening em conformidade com
-o PRD §11. Esta auditoria verifica, por tentativas de escape, que os vetores
-óbvios são contidos.
+o PRD §11. Esta auditoria valida a **configuração** de cada camada contra os vetores
+de escape especificados no PRD §19 (Riscos).
+
+**Escopo desta auditoria**: validação de configuração (dicionário, kwargs, env vars).
+Testes de runtime com container real requerem Docker e estão pendentes de execução
+manual — ver seção [Validação Manual Pendente](#validação-manual-pendente).
 
 ---
 
@@ -17,14 +21,14 @@ o PRD §11. Esta auditoria verifica, por tentativas de escape, que os vetores
 
 | # | Vetor de Escape | Camada | Mitigação | Status |
 |---|---|---|---|---|
-| 1 | Escrita em `/` (rootfs) | 3 | `read_only: True` + `tmpfs` apenas em `/tmp` | ✅ Contido |
-| 2 | Fork bomb / spawn massivo | 6 | `pids_limit: 64` | ✅ Contido |
-| 3 | Acesso à rede (`curl`, `ping`) | 2 | `network_mode: "none"` | ✅ Contido |
-| 4 | Escape de memória (OOM) | 4 | `mem_limit: 128m` + `memswap_limit: 128m` | ✅ Contido |
-| 5 | Exaustão de CPU | 5 | `cpu_quota: 50000` (0.5 CPU) + `EXEC_TIMEOUT_S: 10` | ✅ Contido |
-| 6 | Escalada de privilégios (root) | 7 | `user: 65534:65534` (nobody) | ✅ Contido |
-| 7 | Abuso de capabilities Linux | 8 | `cap_drop: ["ALL"]` | ✅ Contido |
-| 8 | Conexão persistente indefinida | timeout | `DOCKER_STOP_TIMEOUT_S: 12` + `EXEC_TIMEOUT_S: 10` | ✅ Contido |
+| 1 | Escrita em `/` (rootfs) | 3 | `read_only: True` + `tmpfs` apenas em `/tmp` | ✅ Config validada |
+| 2 | Fork bomb / spawn massivo | 6 | `pids_limit: 64` | ✅ Config validada |
+| 3 | Acesso à rede (`curl`, `ping`) | 2 | `network_mode: "none"` | ✅ Config validada |
+| 4 | Escape de memória (OOM) | 4 | `mem_limit: 128m` + `memswap_limit: 128m` | ✅ Config validada |
+| 5 | Exaustão de CPU | 5 | `cpu_quota: 50000` (0.5 CPU) + `EXEC_TIMEOUT_S: 10` | ✅ Config validada |
+| 6 | Escalada de privilégios (root) | 7 | `user: 65534:65534` (nobody) | ✅ Config validada |
+| 7 | Abuso de capabilities Linux | 8 | `cap_drop: ["ALL"]` | ✅ Config validada |
+| 8 | Conexão persistente indefinida | timeout | `DOCKER_STOP_TIMEOUT_S: 12` + `EXEC_TIMEOUT_S: 10` | ✅ Config validada |
 
 ---
 
@@ -41,14 +45,14 @@ o PRD §11. Esta auditoria verifica, por tentativas de escape, que os vetores
 - **Vetores prevenidos**: exfiltração de dados, C2, reverse shell, SSRF interno
 
 ### Camada 3: Filesystem read-only + tmpfs
-- `read_only: True` → qualquer tentativa de escrita em `/` retorna `EROFS` (Read-only file system)
+- `sandbox_run_kwargs()` define `read_only: True` → qualquer tentativa de escrita em `/` retornaria `EROFS`
 - `tmpfs: {"/tmp": "size=8m"}` → única área gravável com limite de 8 MB
 - **Vetores prevenidos**: alteração de binários do sistema, persistência, ransomware
-- **Validação manual**:
-  ```
-  $ touch /escape_test        → touch: /escape_test: Read-only file system
-  $ echo "x" > /etc/hosts     → bash: /etc/hosts: Read-only file system
-  ```
+- ⚠️ **Exceção de staging**: `PtyExecutionStrategy` usa `sandbox_staging_kwargs()` com **`read_only: False`**
+  para permitir `put_archive` do binário em `/sandbox`. Durante a execução real, o rootfs permanece
+  gravável em `/sandbox` (workdir do container). Isso é um **risco residual**: código arbitrário pode
+  escrever em `/sandbox`, mas o volume é isolado do host e descartado após a execução.
+  Ver [Validação Manual Pendente](#validação-manual-pendente).
 
 ### Camada 4: Limites de memória (`mem_limit: 128m`, `memswap_limit: 128m`)
 - Memória RAM limitada a 128 MB, swap desabilitado
@@ -77,7 +81,10 @@ o PRD §11. Esta auditoria verifica, por tentativas de escape, que os vetores
 
 ---
 
-## Tentativas de Escape (Resultados)
+## Tentativas de Escape (Resultados esperados — config)
+
+Os resultados abaixo descrevem o comportamento **esperado** com base na configuração
+validada. Testes de runtime com container real estão pendentes (ver seção abaixo).
 
 ### 1. Escrita no rootfs ❌ (contido)
 
@@ -158,10 +165,57 @@ o PRD §11. Esta auditoria verifica, por tentativas de escape, que os vetores
 
 ---
 
+## Validação Manual Pendente
+
+Os seguintes testes de runtime requerem Docker e um container `simples-runner:latest`
+construído. Executar manualmente e anexar evidências (logs/screenshots):
+
+### 1. Escrita em `/` (rootfs)
+```bash
+docker run --rm --read-only --tmpfs /tmp:size=8m simples-runner:latest \
+  touch /escape_test 2>&1
+# Esperado: touch: /escape_test: Read-only file system
+```
+
+### 2. Fork bomb
+```bash
+docker run --rm --pids-limit 64 simples-runner:latest \
+  sh -c 'i=0; while [ $i -lt 100 ]; do (sleep 999 &); i=$((i+1)); done; wait' 2>&1
+# Esperado: fork() retorna EAGAIN após 64 processos
+```
+
+### 3. Rede bloqueada
+```bash
+docker run --rm --network=none simples-runner:latest \
+  sh -c 'ping -c1 8.8.8.8 2>&1 || curl -s http://example.com 2>&1'
+# Esperado: Network is unreachable / Could not resolve host
+```
+
+### 4. read_only staging (risco residual)
+```bash
+# O container de execucao REAL usa sandbox_staging_kwargs() com read_only=False.
+# Validar que /sandbox e gravavel mas isolado do host:
+docker run --rm --read-only --tmpfs /tmp:size=8m \
+  -v /tmp/sim-test:/sandbox:rw \
+  simples-runner:latest sh -c 'echo x > /sandbox/test && cat /sandbox/test'
+# Confirmar que o arquivo aparece em /tmp/sim-test no host e NAO em /etc ou /
+```
+
+---
+
 ## Conclusão
 
-As 8 camadas de hardening implementadas no sandbox `simples-runner` formam uma defesa
-em profundidade eficaz contra os vetores de escape especificados no PRD §19 (Riscos).
-Todos os vetores testados foram contidos conforme esperado.
+A **configuração** das 8 camadas de hardening do sandbox `simples-runner` está em
+conformidade com o PRD §11.2. Os valores de `sandbox_run_kwargs()`, `sandbox_staging_kwargs()`
+e `Config` foram validados por 25 testes automatizados.
 
-**Status final**: ✅ APROVADO — Sandbox seguro para uso em produção multi-tenant.
+**Limitações conhecidas**:
+- `sandbox_staging_kwargs()` usa `read_only: False` (necessário para `put_archive`),
+  criando uma superfície gravável em `/sandbox` durante a execução. O risco é mitigado
+  pelo isolamento do volume e descarte pós-execução.
+- Testes de runtime com container real (Docker) estão pendentes de execução manual.
+  Ver [Validação Manual Pendente](#validação-manual-pendente).
+
+**Status final**: ⚠️ CONFIGURAÇÃO CONFORME PRD §11.2 — Validação de runtime pendente.
+Não classificar como "aprovado para produção" até que os testes manuais sejam executados
+e as evidências anexadas a este documento.
