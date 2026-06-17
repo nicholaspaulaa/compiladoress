@@ -1,8 +1,10 @@
 import type { editor } from "monaco-editor";
 
 export const DEFAULT_SIMPLES_CODE = `programa demo
+inteiro x;
 inicio
-  escreva "Ola, SIMPLES!";
+  leia x;
+  escreval x;
 fim
 `;
 

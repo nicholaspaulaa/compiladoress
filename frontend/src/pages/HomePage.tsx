@@ -1,13 +1,16 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { CodeEditor } from "../components/CodeEditor";
 import { IdeLayout } from "../components/IdeLayout";
 import { IdeToolbar } from "../components/IdeToolbar";
 import { NasmViewer } from "../components/NasmViewer";
+import {
+  TerminalPanel,
+  type TerminalPanelHandle,
+} from "../components/TerminalPanel";
 import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
-import { compileSimples } from "../lib/compileApi";
 import type { CompileError } from "../lib/compileTypes";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
 import {
@@ -15,6 +18,9 @@ import {
   formatCompileErrorsForNasm,
 } from "../lib/nasm/nasmConfig";
 import type { RunState } from "../lib/runState";
+import { getAccessToken } from "../lib/supabase";
+import { createWsRunConnection } from "../lib/wsRunClient";
+import type { WsRunConnection } from "../lib/wsRunTypes";
 
 export function HomePage() {
   const { user, signOut } = useAuth();
@@ -25,7 +31,20 @@ export function HomePage() {
   const [runState, setRunState] = useState<RunState>("idle");
   const [toolbarStatus, setToolbarStatus] = useState<string | null>(null);
 
+  const terminalRef = useRef<TerminalPanelHandle>(null);
+  const wsRef = useRef<WsRunConnection | null>(null);
+  const compileErrorsRef = useRef<CompileError[]>([]);
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, []);
+
   async function handleSignOut() {
+    wsRef.current?.close();
+    wsRef.current = null;
     await signOut();
     navigate("/login", { replace: true });
   }
@@ -36,42 +55,82 @@ export function HomePage() {
     setToolbarStatus(null);
   }, []);
 
+  const finishRun = useCallback(() => {
+    setRunState("idle");
+    wsRef.current = null;
+  }, []);
+
+  const handleTerminalInput = useCallback((data: string) => {
+    wsRef.current?.sendStdin(data);
+  }, []);
+
   const handleRun = useCallback(async () => {
-    if (runState === "compiling") {
+    if (runState !== "idle") {
       return;
     }
 
     setRunState("compiling");
     setToolbarStatus(null);
+    setCompileErrors([]);
+    compileErrorsRef.current = [];
 
-    try {
-      const result = await compileSimples(code);
-
-      if (result.success) {
-        setCompileErrors([]);
-        setNasmCode(result.asm);
-        return;
-      }
-
-      if (result.source === "compiler") {
-        setCompileErrors(result.errors);
-        setNasmCode(formatCompileErrorsForNasm(result.errors));
-        return;
-      }
-
-      setCompileErrors([]);
-      setToolbarStatus(`> ${result.errors[0]?.message ?? "Erro de servidor"}`);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Falha ao comunicar com o servidor";
-      setCompileErrors([]);
-      setToolbarStatus(`> ${message}`);
-    } finally {
+    const token = await getAccessToken();
+    if (!token) {
+      setToolbarStatus("> Sessao expirada — faca login novamente");
       setRunState("idle");
+      return;
     }
-  }, [code, runState]);
+
+    terminalRef.current?.clear();
+    terminalRef.current?.write("> compile_and_run via WebSocket...\r\n");
+
+    wsRef.current?.close();
+
+    const connection = createWsRunConnection(token, {
+      onCompileStarted: () => {
+        setRunState("compiling");
+      },
+      onCompileError: (error) => {
+        compileErrorsRef.current = [...compileErrorsRef.current, error];
+        setCompileErrors(compileErrorsRef.current);
+        setNasmCode(formatCompileErrorsForNasm(compileErrorsRef.current));
+        terminalRef.current?.writeln(`> erro: ${error.message}`);
+        finishRun();
+      },
+      onAsmGenerated: (asm) => {
+        setCompileErrors([]);
+        setNasmCode(asm);
+      },
+      onExecStarted: () => {
+        setRunState("executing");
+        terminalRef.current?.focus();
+      },
+      onStdout: (data) => {
+        terminalRef.current?.write(data);
+      },
+      onExit: (code, durationMs) => {
+        terminalRef.current?.writeln(
+          `\r\n> fim (code=${code}, ${durationMs}ms)`,
+        );
+        finishRun();
+      },
+      onTimeout: (limitS) => {
+        terminalRef.current?.writeln(`\r\n> timeout (${limitS}s)`);
+        finishRun();
+      },
+      onInternalError: (message) => {
+        setToolbarStatus(`> ${message}`);
+        terminalRef.current?.writeln(`> ${message}`);
+        finishRun();
+      },
+      onDisconnected: () => {
+        finishRun();
+      },
+    });
+
+    wsRef.current = connection;
+    connection.sendCompileAndRun(code);
+  }, [code, finishRun, runState]);
 
   return (
     <IdeLayout
@@ -116,6 +175,9 @@ export function HomePage() {
           />
         }
         nasm={<NasmViewer value={nasmCode} />}
+        terminal={
+          <TerminalPanel ref={terminalRef} onInput={handleTerminalInput} />
+        }
       />
     </IdeLayout>
   );
