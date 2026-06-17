@@ -131,12 +131,15 @@ def build_binary(code: str) -> dict:
             return nasm_result
 
         if nasm_result.returncode != 0 or not os.path.isfile(obj_path):
+            errors = [
+                make_error(
+                    "nasm",
+                    nasm_result.stderr.strip() or "Falha ao montar NASM",
+                )
+            ]
+            record_compile_errors(errors)
             cleanup_work_dir(work_dir)
-            return {
-                "success": False,
-                "stage": "assemble",
-                "stderr": nasm_result.stderr.strip() or "Falha ao montar NASM",
-            }
+            return {"success": False, "errors": errors}
 
         with observe_compile_phase("ld"):
             link_result = _run_step(
@@ -150,12 +153,15 @@ def build_binary(code: str) -> dict:
             return link_result
 
         if link_result.returncode != 0 or not os.path.isfile(bin_path):
+            errors = [
+                make_error(
+                    "ld",
+                    link_result.stderr.strip() or "Falha ao linkar binario",
+                )
+            ]
+            record_compile_errors(errors)
             cleanup_work_dir(work_dir)
-            return {
-                "success": False,
-                "stage": "link",
-                "stderr": link_result.stderr.strip() or "Falha ao linkar binario",
-            }
+            return {"success": False, "errors": errors}
 
         return {"success": True, "asm": asm, "work_dir": work_dir}
     except OSError as exc:

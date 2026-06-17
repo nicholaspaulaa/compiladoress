@@ -23,7 +23,8 @@ class CompileError(TypedDict, total=False):
 
 
 _VALID_PHASES = frozenset(
-    {"lexer", "parser", "semantic", "codegen", "compile_timeout", "compiler", "server"}
+    {"lexer", "parser", "semantic", "codegen", "compile_timeout", "compiler", "server",
+     "nasm", "ld", "assemble", "link"}
 )
 
 _LINE_ERROR_RE = re.compile(r"^(\w+):(\d+):(\d+):\s*(.+)$")

@@ -148,16 +148,11 @@ class WsRunSession:
                 self._send_json(compile_error_payload(err))
             return
 
-        stage = result.get("stage")
+        # Safety net — fallback for callers that don't use the errors format
         stderr = result.get("stderr", "")
-        if stage == "assemble":
-            self._send_json({"type": "assemble_error", "stderr": stderr})
-        elif stage == "link":
-            self._send_json({"type": "link_error", "stderr": stderr})
-        else:
-            self._send_json(
-                {
-                    "type": "internal_error",
-                    "message": stderr or "Falha desconhecida no build",
-                }
-            )
+        self._send_json(
+            {
+                "type": "internal_error",
+                "message": stderr or "Falha desconhecida no build",
+            }
+        )

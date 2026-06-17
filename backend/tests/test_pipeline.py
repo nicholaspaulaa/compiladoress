@@ -90,5 +90,9 @@ def test_build_binary_assemble_error(mock_run_step):
 
     result = build_binary("programa p\ninicio\nfim\n")
     assert result["success"] is False
-    assert result["stage"] == "assemble"
-    assert "invalid instruction" in result["stderr"]
+    assert len(result["errors"]) >= 1
+    assert any(
+        err.get("phase") in ("nasm", "assemble")
+        and "invalid instruction" in err.get("message", "")
+        for err in result["errors"]
+    )
