@@ -9,6 +9,7 @@ from typing import Callable
 
 from config import Config
 from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy
+from metrics import record_execution
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,9 @@ class WsPtyBridge:
         except Exception as exc:
             logger.exception("Falha na execucao PTY user-facing")
             self._send_json({"type": "internal_error", "message": str(exc)})
+            record_execution(
+                ExecutionResult(exit_code=-1, duration_ms=0, timed_out=False)
+            )
             raise
 
         limit = timeout_s if timeout_s is not None else Config.EXEC_TIMEOUT_S
@@ -104,6 +108,7 @@ class WsPtyBridge:
                 payload["stopped"] = True
             self._send_json(payload)
 
+        record_execution(result)
         return result
 
 

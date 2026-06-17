@@ -11,6 +11,7 @@ import uuid
 from compile import SIMPLESC_BIN
 from config import Config
 from error_parser import CompileError, make_error, parse_errors
+from metrics import observe_compile_phase, record_compile_errors
 
 NASM_BIN = os.environ.get("NASM_BIN", "nasm")
 LD_BIN = os.environ.get("LD_BIN", "i686-linux-gnu-ld")
@@ -94,12 +95,13 @@ def build_binary(code: str) -> dict:
         with open(src_path, "w", encoding="utf-8") as handle:
             handle.write(code)
 
-        compile_result = _run_step(
-            [SIMPLESC_BIN, src_path, "-o", asm_path],
-            cwd=work_dir,
-            timeout_s=timeout_s,
-            timeout_phase="compile",
-        )
+        with observe_compile_phase("parser"):
+            compile_result = _run_step(
+                [SIMPLESC_BIN, src_path, "-o", asm_path],
+                cwd=work_dir,
+                timeout_s=timeout_s,
+                timeout_phase="compile",
+            )
         if isinstance(compile_result, dict):
             cleanup_work_dir(work_dir)
             return compile_result
@@ -110,47 +112,56 @@ def build_binary(code: str) -> dict:
                 errors = [make_error("unknown", compile_result.stderr.strip())]
             if not errors:
                 errors = [make_error("compiler", "Falha na compilacao SIMPLES")]
+            record_compile_errors(errors)
             cleanup_work_dir(work_dir)
             return {"success": False, "errors": errors}
 
         with open(asm_path, encoding="utf-8") as handle:
             asm = handle.read()
 
-        nasm_result = _run_step(
-            [NASM_BIN, "-f", "elf32", asm_path, "-o", obj_path],
-            cwd=work_dir,
-            timeout_s=timeout_s,
-            timeout_phase="assemble",
-        )
+        with observe_compile_phase("nasm"):
+            nasm_result = _run_step(
+                [NASM_BIN, "-f", "elf32", asm_path, "-o", obj_path],
+                cwd=work_dir,
+                timeout_s=timeout_s,
+                timeout_phase="assemble",
+            )
         if isinstance(nasm_result, dict):
             cleanup_work_dir(work_dir)
             return nasm_result
 
         if nasm_result.returncode != 0 or not os.path.isfile(obj_path):
+            errors = [
+                make_error(
+                    "nasm",
+                    nasm_result.stderr.strip() or "Falha ao montar NASM",
+                )
+            ]
+            record_compile_errors(errors)
             cleanup_work_dir(work_dir)
-            return {
-                "success": False,
-                "stage": "assemble",
-                "stderr": nasm_result.stderr.strip() or "Falha ao montar NASM",
-            }
+            return {"success": False, "errors": errors}
 
-        link_result = _run_step(
-            [LD_BIN, "-m", "elf_i386", obj_path, "-o", bin_path],
-            cwd=work_dir,
-            timeout_s=timeout_s,
-            timeout_phase="link",
-        )
+        with observe_compile_phase("ld"):
+            link_result = _run_step(
+                [LD_BIN, "-m", "elf_i386", obj_path, "-o", bin_path],
+                cwd=work_dir,
+                timeout_s=timeout_s,
+                timeout_phase="link",
+            )
         if isinstance(link_result, dict):
             cleanup_work_dir(work_dir)
             return link_result
 
         if link_result.returncode != 0 or not os.path.isfile(bin_path):
+            errors = [
+                make_error(
+                    "ld",
+                    link_result.stderr.strip() or "Falha ao linkar binario",
+                )
+            ]
+            record_compile_errors(errors)
             cleanup_work_dir(work_dir)
-            return {
-                "success": False,
-                "stage": "link",
-                "stderr": link_result.stderr.strip() or "Falha ao linkar binario",
-            }
+            return {"success": False, "errors": errors}
 
         return {"success": True, "asm": asm, "work_dir": work_dir}
     except OSError as exc:

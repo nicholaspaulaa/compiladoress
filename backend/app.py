@@ -3,10 +3,18 @@ from flask import Flask, g, jsonify, request
 from auth import verify_jwt
 from compile import compile_code
 from config import Config
+from metrics import metrics_response
 from ws_run import sock, ws_run  # noqa: F401 — registra rota via decorator
 
 app = Flask(__name__)
 sock.init_app(app)
+
+
+@app.route("/metrics")
+def metrics():
+    """Prometheus scrape endpoint — interno apenas (PRD §16.2, issue #37)."""
+    body, status, headers = metrics_response()
+    return body, status, headers
 
 
 @app.route("/api/health")

@@ -10,6 +10,7 @@ from flask_sock import Sock
 from ws_auth import WS_CLOSE_POLICY, authenticate_ws_token, extract_ws_token_from_request
 from ws_bridge import WsPtyBridge, start_pty_bridge
 from ws_protocol import WsRunSession
+from metrics import WEBSOCKET_CONNECTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -47,21 +48,25 @@ def ws_run(ws):
     logger.info("WebSocket /ws/run conectado user_id=%s", g.user_id)
 
     session = WsRunSession(g.user_id, lambda msg: _send_json(ws, msg))
+    WEBSOCKET_CONNECTIONS.inc()
 
-    while True:
-        raw = ws.receive()
-        if raw is None:
-            session.cleanup()
-            break
+    try:
+        while True:
+            raw = ws.receive()
+            if raw is None:
+                session.cleanup()
+                break
 
-        try:
-            message = json.loads(raw)
-        except json.JSONDecodeError:
-            logger.warning("WS frame JSON invalido de user_id=%s", g.user_id)
-            continue
+            try:
+                message = json.loads(raw)
+            except json.JSONDecodeError:
+                logger.warning("WS frame JSON invalido de user_id=%s", g.user_id)
+                continue
 
-        if not isinstance(message, dict):
-            logger.warning("WS mensagem nao e objeto JSON user_id=%s", g.user_id)
-            continue
+            if not isinstance(message, dict):
+                logger.warning("WS mensagem nao e objeto JSON user_id=%s", g.user_id)
+                continue
 
-        session.handle_message(message)
+            session.handle_message(message)
+    finally:
+        WEBSOCKET_CONNECTIONS.dec()
