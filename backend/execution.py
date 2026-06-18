@@ -203,12 +203,21 @@ class PtyExecutionStrategy(ExecutionStrategy):
         raise RuntimeError(f"Falha em {operation}")
 
     @staticmethod
-    def _consume_stop(poll_message: MessagePoll) -> bool:
-        for _ in range(8):
+    def _drain_stop_messages(poll_message: MessagePoll, pending: list[dict]) -> bool:
+        """Drena stops disponiveis; stdin e demais mensagens vao para pending."""
+        while True:
             message = poll_message()
-            if message and message.get("type") == "stop":
+            if message is None:
+                return False
+            if message.get("type") == "stop":
                 return True
-        return False
+            pending.append(message)
+
+    @staticmethod
+    def _next_message(poll_message: MessagePoll, pending: list[dict]) -> dict | None:
+        if pending:
+            return pending.pop(0)
+        return poll_message()
 
     @staticmethod
     def _resolve_exit_code(
@@ -270,8 +279,9 @@ class PtyExecutionStrategy(ExecutionStrategy):
         timed_out = False
         stopped = False
         active_counted = False
+        pending: list[dict] = []
 
-        if self._consume_stop(poll_message):
+        if self._drain_stop_messages(poll_message, pending):
             return ExecutionResult(
                 exit_code=130,
                 duration_ms=0,
@@ -289,7 +299,7 @@ class PtyExecutionStrategy(ExecutionStrategy):
                 ),
             )
 
-            if self._consume_stop(poll_message):
+            if self._drain_stop_messages(poll_message, pending):
                 container.remove(force=True)
                 return ExecutionResult(
                     exit_code=130,
@@ -320,7 +330,7 @@ class PtyExecutionStrategy(ExecutionStrategy):
                     self._kill_container(container, force=True)
                     break
 
-                message = poll_message()
+                message = self._next_message(poll_message, pending)
                 if message:
                     msg_type = message.get("type")
                     if msg_type == "stdin":

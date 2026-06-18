@@ -101,16 +101,21 @@ def test_execute_forwards_stdin_to_attach_socket(_mock_select, _mock_tar, mock_d
 def test_execute_stop_kills_container(_mock_select, _mock_tar, mock_docker_client):
     client, container, attach, sock = mock_docker_client
     sock.fileno.return_value = 1
+    container.reload.side_effect = lambda: setattr(container, "status", "exited")
+    messages = [None, None, {"type": "stop"}]
+
+    def poll():
+        return messages.pop(0) if messages else None
 
     strategy = PtyExecutionStrategy(client=client)
     result = strategy.execute(
         "/tmp/sim",
         lambda _data: None,
-        lambda: {"type": "stop"},
+        poll,
         timeout_s=5,
     )
 
-    container.kill.assert_called_with(signal="SIGTERM")
+    container.kill.assert_called_with(signal="SIGKILL")
     assert result.stopped is True
     container.remove.assert_called_once_with(force=True)
 

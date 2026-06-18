@@ -50,6 +50,7 @@ class WsPtyBridge:
 
     def run(self, binary_dir: str, timeout_s: int | None = None) -> ExecutionResult:
         """pty_to_ws + ws_to_pty sincronos; rode em thread separada do handler WS."""
+        self._active.set()
         try:
             return self._run_session(binary_dir, timeout_s)
         finally:

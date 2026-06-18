@@ -29,7 +29,6 @@ class Config:
     EXEC_TIMEOUT_S = int(os.environ.get("EXEC_TIMEOUT_S", "10"))
     DOCKER_STOP_TIMEOUT_S = int(os.environ.get("DOCKER_STOP_TIMEOUT_S", "12"))
     DOCKER_API_TIMEOUT_S = int(os.environ.get("DOCKER_API_TIMEOUT_S", "120"))
-    DOCKER_STATUS_POLL_S = float(os.environ.get("DOCKER_STATUS_POLL_S", "0.5"))
     MAX_CODE_KB = int(os.environ.get("MAX_CODE_KB", "64"))
 
     SANDBOX_IMAGE = os.environ.get("SANDBOX_IMAGE", "simples-runner:latest")
