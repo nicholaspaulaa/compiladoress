@@ -91,6 +91,28 @@ def test_run_timeout_emits_timeout_message(mock_strategy):
     assert sent[-1] == {"type": "timeout", "limit_s": 10}
 
 
+def test_run_asyncio_wall_clock_timeout_within_11s(mock_strategy):
+    """Issue #32: asyncio.wait_for interrompe sessao lenta e emite timeout."""
+    import time
+
+    sent: list[dict] = []
+
+    def slow_execute(_binary_dir, _on_stdout, _poll_message, timeout_s=None):
+        time.sleep(10.5)
+        return ExecutionResult(exit_code=0, duration_ms=10500, timed_out=False)
+
+    mock_strategy.execute.side_effect = slow_execute
+
+    bridge = WsPtyBridge(sent.append, strategy=mock_strategy)
+    started = time.monotonic()
+    result = bridge.run("/tmp/sim", timeout_s=10)
+    elapsed = time.monotonic() - started
+
+    assert elapsed <= 11.0
+    assert result.timed_out is True
+    assert sent[-1] == {"type": "timeout", "limit_s": 10}
+
+
 def test_run_internal_error_on_strategy_failure(mock_strategy):
     sent: list[dict] = []
     mock_strategy.execute.side_effect = RuntimeError("docker down")

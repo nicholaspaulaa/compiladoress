@@ -273,6 +273,7 @@ class PtyExecutionStrategy(ExecutionStrategy):
     ) -> ExecutionResult:
         exec_timeout = timeout_s if timeout_s is not None else Config.EXEC_TIMEOUT_S
         stop_timeout = Config.DOCKER_STOP_TIMEOUT_S
+        # Camada 2 (PRD §4.1): deadline no loop PTY — backup do asyncio.wait_for no ws_bridge (#32)
         container = None
         attach = None
         start = time.monotonic()
