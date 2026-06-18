@@ -1,10 +1,5 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = [
-    "--cov=.",
-    "--cov-report=term-missing:skip-covered",
-    "--cov-fail-under=70",
-]
 
 [tool.coverage.run]
 source = ["."]

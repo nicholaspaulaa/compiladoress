@@ -158,11 +158,14 @@ Se o Supabase não estiver configurado, `supabase.status` será `"unconfigured"`
 ### Testes
 
 ```bash
-# Backend (com cobertura minima 70%)
+# Suite completa + cobertura minima 70% (validacao da issue #41)
 cd backend && make test-cov
 
-# Apenas testes, sem relatorio de cobertura
+# Suite completa, sem relatorio de cobertura
 cd backend && make test
+
+# Apenas os testes novos da issue #41 (sem gate de cobertura global)
+cd backend && make test-new
 
 # Testes de segurança do sandbox (24 testes)
 python -m pytest tests/test_sandbox_security.py -v
