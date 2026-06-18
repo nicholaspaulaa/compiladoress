@@ -7,7 +7,7 @@ from simple_websocket import ConnectionClosed
 
 from config import Config
 from ws_auth import WS_CLOSE_POLICY
-from ws_run import begin_pty_execution, handle_ws_run_connection
+from ws_run import handle_ws_run_connection
 
 
 def _configure_auth(monkeypatch):
@@ -91,15 +91,3 @@ def test_ws_run_ignores_non_object_json(mock_auth, mock_session_cls, app, monkey
         handle_ws_run_connection(ws)
 
     session.handle_message.assert_not_called()
-
-
-@patch("ws_run.start_pty_bridge")
-def test_begin_pty_execution_delegates(mock_start):
-    outbound = MagicMock()
-    mock_start.return_value = (MagicMock(), MagicMock())
-
-    bridge, thread = begin_pty_execution(outbound, "/tmp/work")
-
-    mock_start.assert_called_once_with(outbound.enqueue, "/tmp/work")
-    assert bridge is mock_start.return_value[0]
-    assert thread is mock_start.return_value[1]

@@ -1,7 +1,6 @@
 """Handler WebSocket /ws/run (PRD §9.2)."""
 
 import json
-import logging
 import queue
 import threading
 
@@ -11,7 +10,6 @@ from simple_websocket import ConnectionClosed
 
 from structured_logging import get_logger, hash_user_id
 from ws_auth import WS_CLOSE_POLICY, authenticate_ws_token, extract_ws_token_from_request
-from ws_bridge import WsPtyBridge, start_pty_bridge
 from ws_protocol import WsRunSession
 from metrics import WEBSOCKET_CONNECTIONS
 
@@ -99,14 +97,6 @@ def handle_ws_run_connection(ws) -> None:
     finally:
         session.cleanup()
         WEBSOCKET_CONNECTIONS.dec()
-
-
-def begin_pty_execution(
-    outbound: WsOutbound,
-    binary_dir: str,
-) -> tuple[WsPtyBridge, threading.Thread]:
-    """Inicia execucao sandbox; usado por WsRunSession apos build ok."""
-    return start_pty_bridge(outbound.enqueue, binary_dir)
 
 
 @sock.route("/ws/run")
