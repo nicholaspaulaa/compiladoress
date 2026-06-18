@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import threading
 from enum import Enum
 from typing import Callable
@@ -13,7 +12,6 @@ from structured_logging import get_logger, hash_user_id
 from ws_bridge import WsPtyBridge, start_pty_bridge
 from rate_limit import RATE_LIMIT_MESSAGE, check_execution_rate_limit
 
-logger = logging.getLogger(__name__)
 log = get_logger("simples.ws")
 
 SendJson = Callable[[dict], None]
@@ -93,34 +91,46 @@ class WsRunSession:
         if msg_type == "stdin":
             data, error = validate_stdin(message)
             if error:
-                logger.warning("WS stdin invalido user_id=%s: %s", self.user_id, error)
+                log.warning(
+                    "ws_stdin_invalid",
+                    user_id_hash=hash_user_id(self.user_id),
+                    message=error,
+                )
                 return
             if self.state != WsState.EXECUTING or self.bridge is None or not self.bridge.active:
-                logger.warning("WS stdin ignorado em %s user_id=%s", self.state.value, self.user_id)
+                log.warning(
+                    "ws_stdin_ignored",
+                    user_id_hash=hash_user_id(self.user_id),
+                    state=self.state.value,
+                )
                 return
             self.bridge.enqueue({"type": "stdin", "data": data})
             return
 
         if msg_type == "stop":
             if self.state != WsState.EXECUTING or self.bridge is None:
-                logger.warning("WS stop ignorado em %s user_id=%s", self.state.value, self.user_id)
+                log.warning(
+                    "ws_stop_ignored",
+                    user_id_hash=hash_user_id(self.user_id),
+                    state=self.state.value,
+                )
                 return
             log.info("exec_stop", user_id_hash=hash_user_id(self.user_id), channel="ws")
             self.bridge.enqueue({"type": "stop"})
             return
 
-        logger.warning(
-            "WS mensagem desconhecida: type=%s user_id=%s",
-            msg_type,
-            self.user_id,
+        log.warning(
+            "ws_unknown_message",
+            user_id_hash=hash_user_id(self.user_id),
+            message_type=msg_type,
         )
 
     def _handle_compile_and_run(self, message: dict) -> None:
         if self.state != WsState.IDLE:
-            logger.warning(
-                "compile_and_run ignorado em %s user_id=%s",
-                self.state.value,
-                self.user_id,
+            log.warning(
+                "compile_and_run_ignored",
+                user_id_hash=hash_user_id(self.user_id),
+                state=self.state.value,
             )
             return
 
@@ -134,7 +144,6 @@ class WsRunSession:
         code, error = validate_compile_and_run(message)
         if error:
             log.warning("compile_error", user_id_hash=hash_user_id(self.user_id), message=error)
-            logger.warning("compile_and_run invalido user_id=%s: %s", self.user_id, error)
             self._send_json({"type": "internal_error", "message": error})
             return
 
@@ -174,7 +183,6 @@ class WsRunSession:
                 error=str(exc),
                 exc_info=True,
             )
-            logger.exception("Falha ao iniciar execucao user_id=%s", self.user_id)
             self._send_json(
                 {
                     "type": "internal_error",

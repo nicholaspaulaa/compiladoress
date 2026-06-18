@@ -6,7 +6,13 @@ from io import StringIO
 
 import structlog
 
-from structured_logging import configure_structlog, get_logger, hash_user_id
+from structured_logging import (
+    RedactSensitiveQueryFilter,
+    configure_structlog,
+    get_logger,
+    hash_user_id,
+    redact_sensitive_query,
+)
 
 
 def test_hash_user_id_truncates_and_hides_raw_value():
@@ -54,6 +60,28 @@ def test_structlog_emits_json_with_required_fields():
     assert payload["user_id_hash"] == hash_user_id("user-abc")
     assert payload["channel"] == "http"
     assert "user-abc" not in stream.getvalue()
+
+
+def test_redact_sensitive_query_removes_jwt_from_url():
+    raw = 'GET /ws/run?token=eyJhbGciOiJIUzI1NiJ9.secret HTTP/1.1'
+    redacted = redact_sensitive_query(raw)
+    assert "eyJhbGci" not in redacted
+    assert "token=[REDACTED]" in redacted
+
+
+def test_redact_filter_sanitizes_log_record_args():
+    record = logging.LogRecord(
+        name="werkzeug",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg='"%s" %s %s',
+        args=('GET /ws/run?token=secret-jwt HTTP/1.1', 200, "-"),
+        exc_info=None,
+    )
+    RedactSensitiveQueryFilter().filter(record)
+    assert "secret-jwt" not in record.args[0]
+    assert "token=[REDACTED]" in record.args[0]
 
 
 def test_configure_structlog_is_idempotent():

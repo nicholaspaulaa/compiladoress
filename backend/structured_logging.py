@@ -4,11 +4,32 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import sys
 
 import structlog
 
 _CONFIGURED = False
+_TOKEN_QUERY_RE = re.compile(r"(token=)[^&\s\"']+", re.IGNORECASE)
+
+
+def redact_sensitive_query(text: str) -> str:
+    """Remove JWT e outros segredos de query strings em mensagens de log."""
+    return _TOKEN_QUERY_RE.sub(r"\1[REDACTED]", text)
+
+
+class RedactSensitiveQueryFilter(logging.Filter):
+    """Filtra access logs do Werkzeug que incluem ?token=... na URL."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = redact_sensitive_query(record.msg)
+        if record.args:
+            record.args = tuple(
+                redact_sensitive_query(arg) if isinstance(arg, str) else arg
+                for arg in record.args
+            )
+        return True
 
 
 def hash_user_id(user_id: str | None) -> str | None:
@@ -56,6 +77,7 @@ def configure_structlog(*, level: int = logging.INFO) -> None:
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
+    handler.addFilter(RedactSensitiveQueryFilter())
 
     root = logging.getLogger()
     root.handlers.clear()

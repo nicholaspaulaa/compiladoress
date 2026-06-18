@@ -9,12 +9,13 @@ from flask import g
 from flask_sock import Sock
 from simple_websocket import ConnectionClosed
 
+from structured_logging import get_logger, hash_user_id
 from ws_auth import WS_CLOSE_POLICY, authenticate_ws_token, extract_ws_token_from_request
 from ws_bridge import WsPtyBridge, start_pty_bridge
 from ws_protocol import WsRunSession
 from metrics import WEBSOCKET_CONNECTIONS
 
-logger = logging.getLogger(__name__)
+log = get_logger("simples.ws")
 
 sock = Sock()
 _RECEIVE_TIMEOUT_S = 0.05
@@ -66,7 +67,7 @@ def ws_run(ws):
         try:
             outbound.flush()
         except Exception:
-            logger.debug("Nao foi possivel enviar internal_error antes do close WS")
+            log.debug("ws_reject_send_failed")
         _reject_ws(ws, error)
         return
 
@@ -74,7 +75,8 @@ def ws_run(ws):
     g.user_email = payload.get("email")
     g.jwt_payload = payload
 
-    logger.info("WebSocket /ws/run conectado user_id=%s", g.user_id)
+    user_hash = hash_user_id(g.user_id)
+    log.info("ws_connected", user_id_hash=user_hash, channel="ws")
 
     session = WsRunSession(g.user_id, outbound.enqueue)
     WEBSOCKET_CONNECTIONS.inc()
@@ -95,11 +97,11 @@ def ws_run(ws):
             try:
                 message = json.loads(raw)
             except json.JSONDecodeError:
-                logger.warning("WS frame JSON invalido de user_id=%s", g.user_id)
+                log.warning("ws_invalid_json", user_id_hash=user_hash)
                 continue
 
             if not isinstance(message, dict):
-                logger.warning("WS mensagem nao e objeto JSON user_id=%s", g.user_id)
+                log.warning("ws_invalid_message", user_id_hash=user_hash)
                 continue
 
             session.handle_message(message)
