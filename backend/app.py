@@ -5,11 +5,16 @@ from compile import compile_code
 from config import Config
 from metrics import metrics_response
 from rate_limit import limiter, ratelimit_error_response
+from structured_logging import configure_structlog, get_logger, hash_user_id
 from ws_run import sock, ws_run  # noqa: F401 — registra rota via decorator
+
+configure_structlog()
 
 app = Flask(__name__)
 sock.init_app(app)
 limiter.init_app(app)
+
+log = get_logger("simples.api")
 
 
 @app.route("/metrics")
@@ -60,7 +65,16 @@ def compile_endpoint():
     if not code or not isinstance(code, str) or not code.strip():
         return jsonify({"error": "bad_request", "message": "Campo 'code' obrigatorio e nao vazio"}), 400
 
+    user_hash = hash_user_id(g.user_id)
+    log.info("compile_start", user_id_hash=user_hash, channel="http")
     result = compile_code(code.strip())
+    log.info(
+        "compile_end",
+        user_id_hash=user_hash,
+        channel="http",
+        success=bool(result.get("success")),
+        error_count=len(result.get("errors") or []),
+    )
 
     if result.get("success"):
         return jsonify({"asm": result["asm"]}), 200

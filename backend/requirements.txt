@@ -5,3 +5,4 @@ flask-limiter==3.10.1
 flask-sock==0.7.0
 prometheus-client==0.21.1
 simple-websocket==1.0.0
+structlog==24.4.0

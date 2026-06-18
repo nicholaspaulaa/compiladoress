@@ -10,8 +10,10 @@ from typing import Callable
 from config import Config
 from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy, format_docker_error
 from metrics import record_execution
+from structured_logging import get_logger, hash_user_id
 
 logger = logging.getLogger(__name__)
+log = get_logger("simples.executor")
 
 SendJson = Callable[[dict], None]
 
@@ -23,11 +25,14 @@ class WsPtyBridge:
         self,
         send_json: SendJson,
         strategy: ExecutionStrategy | None = None,
+        *,
+        user_id: str | None = None,
     ):
         self._send_json = send_json
         self._strategy = strategy or PtyExecutionStrategy()
         self._inbound: queue.Queue[dict | None] = queue.Queue()
         self._active = threading.Event()
+        self._user_id_hash = hash_user_id(user_id)
 
     @property
     def active(self) -> bool:
@@ -65,6 +70,12 @@ class WsPtyBridge:
                 break
 
     def _run_session(self, binary_dir: str, timeout_s: int | None) -> ExecutionResult:
+        log.info(
+            "exec_start",
+            user_id_hash=self._user_id_hash,
+            channel="ws",
+            binary_dir=binary_dir,
+        )
         self._send_json({"type": "exec_started"})
 
         def poll_message() -> dict | None:
@@ -89,6 +100,13 @@ class WsPtyBridge:
                 timeout_s=timeout_s,
             )
         except Exception as exc:
+            log.error(
+                "exec_error",
+                user_id_hash=self._user_id_hash,
+                channel="ws",
+                error=str(exc),
+                exc_info=True,
+            )
             logger.exception("Falha na execucao PTY user-facing")
             message = format_docker_error(exc)
             self._send_json({"type": "internal_error", "message": message})
@@ -99,8 +117,40 @@ class WsPtyBridge:
 
         limit = timeout_s if timeout_s is not None else Config.EXEC_TIMEOUT_S
         if result.timed_out:
+            log.warning(
+                "exec_timeout",
+                user_id_hash=self._user_id_hash,
+                channel="ws",
+                limit_s=limit,
+                duration_ms=result.duration_ms,
+            )
+            log.info(
+                "exec_end",
+                user_id_hash=self._user_id_hash,
+                channel="ws",
+                outcome="timeout",
+                duration_ms=result.duration_ms,
+                exit_code=result.exit_code,
+            )
             self._send_json({"type": "timeout", "limit_s": limit})
         else:
+            outcome = "stopped" if result.stopped else "success"
+            if result.stopped:
+                log.info(
+                    "exec_stop",
+                    user_id_hash=self._user_id_hash,
+                    channel="ws",
+                    duration_ms=result.duration_ms,
+                    exit_code=result.exit_code,
+                )
+            log.info(
+                "exec_end",
+                user_id_hash=self._user_id_hash,
+                channel="ws",
+                outcome=outcome,
+                duration_ms=result.duration_ms,
+                exit_code=result.exit_code,
+            )
             payload: dict = {
                 "type": "exit",
                 "code": result.exit_code,
@@ -120,9 +170,10 @@ def start_pty_bridge(
     *,
     strategy: ExecutionStrategy | None = None,
     timeout_s: int | None = None,
+    user_id: str | None = None,
 ) -> tuple[WsPtyBridge, threading.Thread]:
     """Inicia bridge em background; handler WS continua recebendo stdin/stop."""
-    bridge = WsPtyBridge(send_json, strategy=strategy)
+    bridge = WsPtyBridge(send_json, strategy=strategy, user_id=user_id)
     bridge._active.set()
     thread = threading.Thread(
         target=bridge.run,
