@@ -124,3 +124,101 @@ def test_poll_exec_finished_returns_to_idle(mock_cleanup):
 
     assert session.state == WsState.IDLE
     mock_cleanup.assert_called_once_with("/tmp/sim")
+
+
+def test_ping_returns_pong():
+    sent: list[dict] = []
+    session = WsRunSession("user-1", sent.append)
+    session.handle_message({"type": "ping"})
+    assert sent == [{"type": "pong"}]
+
+
+def test_validate_compile_and_run_oversized():
+    from config import Config
+
+    huge = "x" * (Config.max_code_bytes() + 1)
+    code, error = validate_compile_and_run({"type": "compile_and_run", "code": huge})
+    assert code is None
+    assert "limite" in error
+
+
+@patch("ws_protocol.start_pty_bridge")
+@patch("ws_protocol.build_binary")
+def test_stop_forwarded_during_exec(mock_build, mock_start_bridge):
+    mock_build.return_value = {"success": True, "asm": "x", "work_dir": "/tmp/x"}
+    bridge = MagicMock()
+    bridge.active = True
+    mock_start_bridge.return_value = (bridge, MagicMock())
+
+    session = WsRunSession("user-1", lambda _msg: None)
+    session.handle_message({"type": "compile_and_run", "code": "programa p\ninicio\nfim\n"})
+    session.handle_message({"type": "stop"})
+
+    bridge.enqueue.assert_called_with({"type": "stop"})
+
+
+def test_stop_ignored_in_idle():
+    session = WsRunSession("user-1", lambda _msg: None)
+    session.handle_message({"type": "stop"})
+    assert session.state == WsState.IDLE
+
+
+def test_unknown_message_type_is_ignored():
+    sent: list[dict] = []
+    session = WsRunSession("user-1", sent.append)
+    session.handle_message({"type": "not_supported"})
+    assert sent == []
+
+
+@patch("ws_protocol.check_execution_rate_limit", return_value=False)
+def test_rate_limited_compile_and_run(_mock_limit):
+    sent: list[dict] = []
+    session = WsRunSession("user-1", sent.append)
+    session.handle_message({"type": "compile_and_run", "code": "programa p\ninicio\nfim\n"})
+    assert sent[0]["type"] == "rate_limited"
+
+
+@patch("ws_protocol.start_pty_bridge", side_effect=RuntimeError("docker down"))
+@patch("ws_protocol.build_binary")
+@patch("ws_protocol.cleanup_work_dir")
+def test_exec_start_failure_returns_internal_error(mock_cleanup, mock_build, _mock_start):
+    sent: list[dict] = []
+    mock_build.return_value = {"success": True, "asm": "x", "work_dir": "/tmp/sim"}
+
+    session = WsRunSession("user-1", sent.append)
+    session.handle_message({"type": "compile_and_run", "code": "programa p\ninicio\nfim\n"})
+
+    assert session.state == WsState.IDLE
+    assert sent[-1]["type"] == "internal_error"
+    assert "docker down" in sent[-1]["message"]
+    mock_cleanup.assert_called_once_with("/tmp/sim")
+
+
+@patch("ws_protocol.cleanup_work_dir")
+def test_cleanup_shuts_down_active_bridge(mock_cleanup):
+    bridge = MagicMock()
+    bridge.active = True
+    thread = MagicMock()
+    thread.is_alive.return_value = False
+
+    session = WsRunSession("user-1", lambda _msg: None)
+    session.bridge = bridge
+    session.exec_thread = thread
+    session.work_dir = "/tmp/sim"
+    session.cleanup()
+
+    bridge.shutdown.assert_called_once()
+    mock_cleanup.assert_called_once_with("/tmp/sim")
+    assert session.bridge is None
+
+
+@patch("ws_protocol.build_binary")
+def test_emit_build_failure_fallback_without_errors(mock_build):
+    sent: list[dict] = []
+    mock_build.return_value = {"success": False, "stderr": "linker failed"}
+
+    session = WsRunSession("user-1", sent.append)
+    session.handle_message({"type": "compile_and_run", "code": "programa p\ninicio\nfim\n"})
+
+    assert sent[-1]["type"] == "internal_error"
+    assert sent[-1]["message"] == "linker failed"
