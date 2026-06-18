@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import queue
 import threading
+import time
 from typing import Callable
 
 from config import Config
+from exec_timeout import run_with_wall_clock_timeout
 from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy, format_docker_error
 from metrics import record_execution
 
@@ -49,10 +52,10 @@ class WsPtyBridge:
         self._inbound.put(None)
 
     def run(self, binary_dir: str, timeout_s: int | None = None) -> ExecutionResult:
-        """pty_to_ws + ws_to_pty sincronos; rode em thread separada do handler WS."""
+        """pty_to_ws + ws_to_pty; asyncio.wait_for aplica timeout wall-clock (issue #32)."""
         self._active.set()
         try:
-            return self._run_session(binary_dir, timeout_s)
+            return asyncio.run(self._run_session_async(binary_dir, timeout_s))
         finally:
             self._active.clear()
             self._drain_inbound()
@@ -64,8 +67,12 @@ class WsPtyBridge:
             except queue.Empty:
                 break
 
-    def _run_session(self, binary_dir: str, timeout_s: int | None) -> ExecutionResult:
+    async def _run_session_async(
+        self, binary_dir: str, timeout_s: int | None
+    ) -> ExecutionResult:
+        limit = timeout_s if timeout_s is not None else Config.EXEC_TIMEOUT_S
         self._send_json({"type": "exec_started"})
+        started = time.monotonic()
 
         def poll_message() -> dict | None:
             try:
@@ -81,12 +88,20 @@ class WsPtyBridge:
                 return
             self._send_json({"type": "stdout", "data": data})
 
-        try:
-            result = self._strategy.execute(
+        def run_execute() -> ExecutionResult:
+            return self._strategy.execute(
                 binary_dir,
                 pty_to_ws,
                 poll_message,
                 timeout_s=timeout_s,
+            )
+
+        try:
+            result, asyncio_timed_out = await run_with_wall_clock_timeout(
+                run_execute,
+                timeout_s=float(limit),
+                on_timeout=self.shutdown,
+                cleanup_grace_s=0.5,
             )
         except Exception as exc:
             logger.exception("Falha na execucao PTY user-facing")
@@ -97,7 +112,21 @@ class WsPtyBridge:
             )
             raise
 
-        limit = timeout_s if timeout_s is not None else Config.EXEC_TIMEOUT_S
+        duration_ms = int((time.monotonic() - started) * 1000)
+        if asyncio_timed_out and result is None:
+            result = ExecutionResult(
+                exit_code=1,
+                duration_ms=duration_ms,
+                timed_out=True,
+            )
+        elif asyncio_timed_out and result is not None:
+            result = ExecutionResult(
+                exit_code=result.exit_code,
+                duration_ms=result.duration_ms,
+                timed_out=True,
+                stopped=result.stopped,
+            )
+
         if result.timed_out:
             self._send_json({"type": "timeout", "limit_s": limit})
         else:
