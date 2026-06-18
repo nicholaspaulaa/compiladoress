@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import logging
 import threading
 from enum import Enum
 from typing import Callable
 
 from config import Config
 from pipeline import build_binary, cleanup_work_dir, compile_error_payload
+from structured_logging import get_logger, hash_user_id
 from ws_bridge import WsPtyBridge, start_pty_bridge
 from rate_limit import RATE_LIMIT_MESSAGE, check_execution_rate_limit
 
-logger = logging.getLogger(__name__)
+log = get_logger("simples.ws")
 
 SendJson = Callable[[dict], None]
 
@@ -91,57 +91,81 @@ class WsRunSession:
         if msg_type == "stdin":
             data, error = validate_stdin(message)
             if error:
-                logger.warning("WS stdin invalido user_id=%s: %s", self.user_id, error)
+                log.warning(
+                    "ws_stdin_invalid",
+                    user_id_hash=hash_user_id(self.user_id),
+                    message=error,
+                )
                 return
             if self.state != WsState.EXECUTING or self.bridge is None or not self.bridge.active:
-                logger.warning("WS stdin ignorado em %s user_id=%s", self.state.value, self.user_id)
+                log.warning(
+                    "ws_stdin_ignored",
+                    user_id_hash=hash_user_id(self.user_id),
+                    state=self.state.value,
+                )
                 return
             self.bridge.enqueue({"type": "stdin", "data": data})
             return
 
         if msg_type == "stop":
             if self.state != WsState.EXECUTING or self.bridge is None:
-                logger.warning("WS stop ignorado em %s user_id=%s", self.state.value, self.user_id)
+                log.warning(
+                    "ws_stop_ignored",
+                    user_id_hash=hash_user_id(self.user_id),
+                    state=self.state.value,
+                )
                 return
+            log.info("exec_stop", user_id_hash=hash_user_id(self.user_id), channel="ws")
             self.bridge.enqueue({"type": "stop"})
             return
 
-        logger.warning(
-            "WS mensagem desconhecida: type=%s user_id=%s",
-            msg_type,
-            self.user_id,
+        log.warning(
+            "ws_unknown_message",
+            user_id_hash=hash_user_id(self.user_id),
+            message_type=msg_type,
         )
 
     def _handle_compile_and_run(self, message: dict) -> None:
         if self.state != WsState.IDLE:
-            logger.warning(
-                "compile_and_run ignorado em %s user_id=%s",
-                self.state.value,
-                self.user_id,
+            log.warning(
+                "compile_and_run_ignored",
+                user_id_hash=hash_user_id(self.user_id),
+                state=self.state.value,
             )
             return
 
         # Rate limit: 30 execucoes/minuto por usuario (PRD RF18, issue #35)
         # Conta cada compile_and_run, nao a conexao — mesmo bucket do HTTP POST /api/compile
         if not check_execution_rate_limit(self.user_id):
+            log.warning("rate_limited", user_id_hash=hash_user_id(self.user_id), channel="ws")
             self._send_json({"type": "rate_limited", "message": RATE_LIMIT_MESSAGE})
             return
 
         code, error = validate_compile_and_run(message)
         if error:
-            logger.warning("compile_and_run invalido user_id=%s: %s", self.user_id, error)
+            log.warning("compile_error", user_id_hash=hash_user_id(self.user_id), message=error)
             self._send_json({"type": "internal_error", "message": error})
             return
 
         self.state = WsState.COMPILING
+        user_hash = hash_user_id(self.user_id)
+        log.info("compile_start", user_id_hash=user_hash, channel="ws")
         self._send_json({"type": "compile_started"})
 
         result = build_binary(code)
         if not result.get("success"):
+            log.info(
+                "compile_end",
+                user_id_hash=user_hash,
+                channel="ws",
+                success=False,
+                error_count=len(result.get("errors") or []),
+            )
             self._emit_build_failure(result)
             self.state = WsState.IDLE
             return
 
+        log.info("compile_end", user_id_hash=user_hash, channel="ws", success=True, error_count=0)
         self._send_json({"type": "asm_generated", "asm": result["asm"]})
         self.work_dir = result["work_dir"]
         self.state = WsState.EXECUTING
@@ -149,9 +173,16 @@ class WsRunSession:
             self.bridge, self.exec_thread = start_pty_bridge(
                 self._send_json,
                 self.work_dir,
+                user_id=self.user_id,
             )
         except Exception as exc:
-            logger.exception("Falha ao iniciar execucao user_id=%s", self.user_id)
+            log.error(
+                "exec_error",
+                user_id_hash=user_hash,
+                channel="ws",
+                error=str(exc),
+                exc_info=True,
+            )
             self._send_json(
                 {
                     "type": "internal_error",
@@ -165,7 +196,6 @@ class WsRunSession:
             self.work_dir = None
             self.state = WsState.IDLE
             return
-        logger.info("Execucao iniciada user_id=%s work_dir=%s", self.user_id, self.work_dir)
 
     def _emit_build_failure(self, result: dict) -> None:
         errors = result.get("errors")
