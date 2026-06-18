@@ -40,6 +40,32 @@ def docker_available() -> bool:
     return _DOCKER_AVAILABLE
 
 
+def create_docker_client():
+    """Cliente docker-py com timeout maior (Docker Desktop no Windows pode demorar)."""
+    if not _DOCKER_AVAILABLE:
+        raise RuntimeError("docker-py nao instalado (pip install docker)")
+    return docker.from_env(timeout=Config.DOCKER_API_TIMEOUT_S)
+
+
+def format_docker_error(exc: BaseException) -> str:
+    """Traduz erros comuns do docker-py para mensagem acionavel."""
+    msg = str(exc)
+    lowered = msg.lower()
+    if "read timed out" in lowered or "unixhttpconnectionpool" in lowered:
+        return (
+            "Falha ao finalizar container (bug conhecido do Docker no Windows). "
+            "Clique Run novamente — o programa pode ter executado mesmo assim."
+        )
+    if "connection refused" in lowered or "no such file" in lowered:
+        return "Docker nao esta rodando — abra o Docker Desktop"
+    if "not found" in lowered and ("image" in lowered or "pull" in lowered):
+        return (
+            f"Imagem {Config.SANDBOX_IMAGE} ausente — rode na raiz do projeto: "
+            "docker compose build runner_image_build"
+        )
+    return msg
+
+
 def get_sandbox_security_config() -> dict:
     """Retorna configuracao de hardening do sandbox para auditoria (PRD §11.2)."""
     return {
@@ -147,12 +173,96 @@ class PtyExecutionStrategy(ExecutionStrategy):
     QEMU_COMMAND = ["/usr/bin/qemu-i386-static", "/sandbox/programa"]
     SANDBOX_DIR = "/sandbox"
     ATTACH_PARAMS = {"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1}
+    _DOCKER_RETRIES = 3
 
     def __init__(self, image: str | None = None, client=None):
         if client is None and not _DOCKER_AVAILABLE:
             raise RuntimeError("docker-py nao instalado (pip install docker)")
         self.image = image or Config.SANDBOX_IMAGE
-        self.client = client if client is not None else docker.from_env()
+        self.client = client if client is not None else create_docker_client()
+
+    def _retry_docker(self, operation: str, fn):
+        last_exc: BaseException | None = None
+        for attempt in range(self._DOCKER_RETRIES):
+            try:
+                return fn()
+            except Exception as exc:
+                last_exc = exc
+                retryable = "timed out" in str(exc).lower()
+                if not retryable or attempt == self._DOCKER_RETRIES - 1:
+                    raise
+                logger.warning(
+                    "Docker %s timeout (tentativa %s/%s), repetindo...",
+                    operation,
+                    attempt + 1,
+                    self._DOCKER_RETRIES,
+                )
+                time.sleep(0.5 * (attempt + 1))
+        if last_exc:
+            raise last_exc
+        raise RuntimeError(f"Falha em {operation}")
+
+    @staticmethod
+    def _drain_stop_messages(poll_message: MessagePoll, pending: list[dict]) -> bool:
+        """Drena stops disponiveis; stdin e demais mensagens vao para pending."""
+        while True:
+            message = poll_message()
+            if message is None:
+                return False
+            if message.get("type") == "stop":
+                return True
+            pending.append(message)
+
+    @staticmethod
+    def _next_message(poll_message: MessagePoll, pending: list[dict]) -> dict | None:
+        if pending:
+            return pending.pop(0)
+        return poll_message()
+
+    @staticmethod
+    def _resolve_exit_code(
+        container,
+        *,
+        stop_timeout: int,
+        stopped: bool,
+        timed_out: bool,
+    ) -> int:
+        """Obtem exit code sem bloquear varios segundos (Docker Desktop no Windows)."""
+        wait_s = 2 if stopped else stop_timeout + 2
+
+        try:
+            wait_result = container.wait(timeout=wait_s)
+            return int(wait_result.get("StatusCode", 130 if stopped else 1))
+        except Exception as exc:
+            logger.warning("container.wait falhou, usando State.ExitCode: %s", exc)
+
+        try:
+            container.reload()
+            state = container.attrs.get("State", {})
+            if state.get("Status") == "exited":
+                code = state.get("ExitCode")
+                return 130 if stopped else (0 if code is None else int(code))
+        except Exception as exc:
+            logger.warning("container.reload falhou ao ler exit code: %s", exc)
+
+        if stopped:
+            return 130
+        if timed_out:
+            return 1
+        return 0
+
+    @staticmethod
+    def _kill_container(container, *, force: bool = False) -> None:
+        signal = "SIGKILL" if force else "SIGTERM"
+        try:
+            container.kill(signal=signal)
+        except Exception as exc:
+            logger.debug("container.kill(%s) falhou: %s", signal, exc)
+            if not force:
+                try:
+                    container.kill(signal="SIGKILL")
+                except Exception:
+                    pass
 
     def execute(
         self,
@@ -168,16 +278,45 @@ class PtyExecutionStrategy(ExecutionStrategy):
         start = time.monotonic()
         timed_out = False
         stopped = False
+        active_counted = False
+        pending: list[dict] = []
+
+        if self._drain_stop_messages(poll_message, pending):
+            return ExecutionResult(
+                exit_code=130,
+                duration_ms=0,
+                timed_out=False,
+                stopped=True,
+            )
 
         try:
-            container = self.client.containers.create(
-                image=self.image,
-                command=self.QEMU_COMMAND,
-                **sandbox_staging_kwargs(),
+            container = self._retry_docker(
+                "create",
+                lambda: self.client.containers.create(
+                    image=self.image,
+                    command=self.QEMU_COMMAND,
+                    **sandbox_staging_kwargs(),
+                ),
             )
-            container.put_archive("/", _build_dir_tar(binary_dir, dest_prefix="sandbox"))
-            container.start()
+
+            if self._drain_stop_messages(poll_message, pending):
+                container.remove(force=True)
+                return ExecutionResult(
+                    exit_code=130,
+                    duration_ms=int((time.monotonic() - start) * 1000),
+                    timed_out=False,
+                    stopped=True,
+                )
+
+            self._retry_docker(
+                "put_archive",
+                lambda: container.put_archive(
+                    "/", _build_dir_tar(binary_dir, dest_prefix="sandbox")
+                ),
+            )
+            self._retry_docker("start", container.start)
             ACTIVE_SANDBOXES.inc()
+            active_counted = True
 
             attach = container.attach_socket(params=self.ATTACH_PARAMS)
             attach._sock.setblocking(False)
@@ -186,12 +325,12 @@ class PtyExecutionStrategy(ExecutionStrategy):
             while True:
                 if time.monotonic() >= deadline:
                     timed_out = True
-                    container.kill(signal="SIGTERM")
-                    time.sleep(1)
-                    container.kill(signal="SIGKILL")
+                    self._kill_container(container)
+                    time.sleep(0.3)
+                    self._kill_container(container, force=True)
                     break
 
-                message = poll_message()
+                message = self._next_message(poll_message, pending)
                 if message:
                     msg_type = message.get("type")
                     if msg_type == "stdin":
@@ -200,7 +339,7 @@ class PtyExecutionStrategy(ExecutionStrategy):
                             attach._sock.sendall(data.encode("utf-8"))
                     elif msg_type == "stop":
                         stopped = True
-                        container.kill(signal="SIGTERM")
+                        self._kill_container(container, force=True)
                         break
 
                 readable, _, _ = select.select([attach._sock], [], [], 0.05)
@@ -210,20 +349,38 @@ class PtyExecutionStrategy(ExecutionStrategy):
                         break
                     on_stdout(chunk.decode("utf-8", errors="replace"))
 
-                container.reload()
-                if container.status != "running":
-                    break
-
-            wait_result = container.wait(timeout=stop_timeout + 2)
-            exit_code = wait_result.get("StatusCode", 1)
+            exit_code = self._resolve_exit_code(
+                container,
+                stop_timeout=stop_timeout,
+                stopped=stopped,
+                timed_out=timed_out,
+            )
             return ExecutionResult(
                 exit_code=exit_code,
                 duration_ms=int((time.monotonic() - start) * 1000),
                 timed_out=timed_out,
                 stopped=stopped,
             )
+        except Exception as exc:
+            if container is not None and attach is not None:
+                try:
+                    exit_code = self._resolve_exit_code(
+                        container,
+                        stop_timeout=stop_timeout,
+                        stopped=stopped,
+                        timed_out=timed_out,
+                    )
+                    return ExecutionResult(
+                        exit_code=exit_code,
+                        duration_ms=int((time.monotonic() - start) * 1000),
+                        timed_out=timed_out,
+                        stopped=stopped,
+                    )
+                except Exception:
+                    pass
+            raise RuntimeError(format_docker_error(exc)) from exc
         finally:
-            if container is not None:
+            if active_counted:
                 ACTIVE_SANDBOXES.dec()
             if attach is not None:
                 try:

@@ -316,6 +316,17 @@ body {
   cursor: wait;
 }
 
+.ide-toolbar__stop:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ide-toolbar__stop:not(:disabled):hover {
+  border-color: var(--retro-error, #ff4d8a);
+  color: var(--retro-error, #ff4d8a);
+  box-shadow: 0 0 10px rgba(255, 77, 138, 0.35);
+}
+
 .ide-toolbar__status {
   font-size: 0.95rem;
   letter-spacing: 0.06em;

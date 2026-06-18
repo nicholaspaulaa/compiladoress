@@ -18,7 +18,7 @@ export interface WsRunHandlers {
   onAsmGenerated: (asm: string) => void;
   onExecStarted: () => void;
   onStdout: (data: string) => void;
-  onExit: (code: number, durationMs: number) => void;
+  onExit: (code: number, durationMs: number, stopped?: boolean) => void;
   onTimeout: (limitS: number) => void;
   onInternalError: (message: string) => void;
   onDisconnected: () => void;

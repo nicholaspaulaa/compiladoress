@@ -3,15 +3,18 @@ import type { RunState } from "../lib/runState";
 interface IdeToolbarProps {
   runState: RunState;
   onRun: () => void;
+  onStop: () => void;
   statusMessage?: string | null;
 }
 
 export function IdeToolbar({
   runState,
   onRun,
+  onStop,
   statusMessage = null,
 }: IdeToolbarProps) {
   const isBusy = runState !== "idle";
+  const canStop = runState === "executing";
 
   const runLabel =
     runState === "compiling"
@@ -44,6 +47,15 @@ export function IdeToolbar({
         ) : (
           "[ RUN ]"
         )}
+      </button>
+      <button
+        type="button"
+        onClick={onStop}
+        disabled={!canStop}
+        className="retro-btn retro-btn-sm retro-btn-outline ide-toolbar__stop"
+        aria-label="Parar execucao"
+      >
+        [ STOP ]
       </button>
       {statusHint && (
         <span className="ide-toolbar__status retro-subtitle">{statusHint}</span>

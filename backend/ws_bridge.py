@@ -8,7 +8,7 @@ import threading
 from typing import Callable
 
 from config import Config
-from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy
+from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy, format_docker_error
 from metrics import record_execution
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,11 @@ class WsPtyBridge:
 
     def enqueue(self, message: dict) -> None:
         """ws_to_pty: enfileira mensagens do cliente (stdin, stop)."""
-        if not self.active:
+        msg_type = message.get("type")
+        if not self.active and msg_type != "stop":
             logger.warning(
                 "WS mensagem ignorada fora de EXECUTING: type=%s",
-                message.get("type"),
+                msg_type,
             )
             return
         self._inbound.put(message)
@@ -89,7 +90,8 @@ class WsPtyBridge:
             )
         except Exception as exc:
             logger.exception("Falha na execucao PTY user-facing")
-            self._send_json({"type": "internal_error", "message": str(exc)})
+            message = format_docker_error(exc)
+            self._send_json({"type": "internal_error", "message": message})
             record_execution(
                 ExecutionResult(exit_code=-1, duration_ms=0, timed_out=False)
             )
@@ -121,6 +123,7 @@ def start_pty_bridge(
 ) -> tuple[WsPtyBridge, threading.Thread]:
     """Inicia bridge em background; handler WS continua recebendo stdin/stop."""
     bridge = WsPtyBridge(send_json, strategy=strategy)
+    bridge._active.set()
     thread = threading.Thread(
         target=bridge.run,
         args=(binary_dir,),

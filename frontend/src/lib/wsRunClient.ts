@@ -23,6 +23,7 @@ function dispatchMessage(
   raw: WsServerMessage,
   handlers: WsRunHandlers,
   setExecuting: (value: boolean) => void,
+  markRunSettled: () => void,
 ): void {
   switch (raw.type) {
     case "compile_started":
@@ -34,6 +35,7 @@ function dispatchMessage(
         handlers.onCompileError(error);
       }
       setExecuting(false);
+      markRunSettled();
       break;
     }
     case "asm_generated":
@@ -49,14 +51,17 @@ function dispatchMessage(
       break;
     case "exit":
       setExecuting(false);
-      handlers.onExit(raw.code, raw.duration_ms);
+      markRunSettled();
+      handlers.onExit(raw.code, raw.duration_ms, raw.stopped);
       break;
     case "timeout":
       setExecuting(false);
+      markRunSettled();
       handlers.onTimeout(raw.limit_s);
       break;
     case "internal_error":
       setExecuting(false);
+      markRunSettled();
       handlers.onInternalError(raw.message);
       break;
     case "pong":
@@ -73,10 +78,15 @@ export function createWsRunConnection(
   let ws: WebSocket | null = null;
   let executing = false;
   let closed = false;
+  let runSettled = false;
   let pendingCompileCode: string | null = null;
 
   const setExecuting = (value: boolean) => {
     executing = value;
+  };
+
+  const markRunSettled = () => {
+    runSettled = true;
   };
 
   const sendJson = (payload: Record<string, unknown>) => {
@@ -105,7 +115,7 @@ export function createWsRunConnection(
   ws.onmessage = (event) => {
     try {
       const message = JSON.parse(String(event.data)) as WsServerMessage;
-      dispatchMessage(message, handlers, setExecuting);
+      dispatchMessage(message, handlers, setExecuting, markRunSettled);
     } catch {
       handlers.onInternalError("Resposta WebSocket invalida");
     }
@@ -122,7 +132,13 @@ export function createWsRunConnection(
         handlers.onInternalError(
           "Backend indisponivel — suba o servidor: cd backend && python app.py (porta 5000)",
         );
-      } else if (event.code !== 1000 && event.code !== 1001 && event.code !== 4403) {
+      } else if (event.code === 4403) {
+        handlers.onInternalError("Token invalido ou expirado");
+      } else if (event.code === 1006 && !runSettled) {
+        handlers.onInternalError(
+          "Conexao caiu — verifique Docker Desktop e clique Run novamente",
+        );
+      } else if (!runSettled && event.code !== 1000 && event.code !== 1001) {
         handlers.onInternalError(
           `WebSocket fechou inesperadamente (code=${event.code})`,
         );
