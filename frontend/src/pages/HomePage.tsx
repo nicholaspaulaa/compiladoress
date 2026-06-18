@@ -11,7 +11,6 @@ import {
 } from "../components/TerminalPanel";
 import { ThreePanelLayout } from "../components/ThreePanelLayout";
 import { useAuth } from "../contexts/AuthContext";
-import { verifyAuth } from "../lib/api";
 import type { CompileError } from "../lib/compileTypes";
 import { DEFAULT_SIMPLES_CODE } from "../lib/monacoConfig";
 import {
@@ -19,7 +18,7 @@ import {
   formatCompileErrorsForNasm,
 } from "../lib/nasm/nasmConfig";
 import type { RunState } from "../lib/runState";
-import { getAccessToken } from "../lib/supabase";
+import { getFreshAccessToken } from "../lib/supabase";
 import { createWsRunConnection } from "../lib/wsRunClient";
 import type { WsRunConnection } from "../lib/wsRunTypes";
 
@@ -35,6 +34,7 @@ export function HomePage() {
   const terminalRef = useRef<TerminalPanelHandle>(null);
   const wsRef = useRef<WsRunConnection | null>(null);
   const compileErrorsRef = useRef<CompileError[]>([]);
+  const stoppingRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -57,6 +57,7 @@ export function HomePage() {
   }, []);
 
   const finishRun = useCallback(() => {
+    stoppingRef.current = false;
     setRunState("idle");
     wsRef.current = null;
   }, []);
@@ -64,6 +65,16 @@ export function HomePage() {
   const handleTerminalInput = useCallback((data: string) => {
     wsRef.current?.sendStdin(data);
   }, []);
+
+  const handleStop = useCallback(() => {
+    if (runState !== "executing" || !wsRef.current || stoppingRef.current) {
+      return;
+    }
+
+    stoppingRef.current = true;
+    setToolbarStatus("> parando execucao...");
+    wsRef.current.sendStop();
+  }, [runState]);
 
   const handleRun = useCallback(async () => {
     if (runState !== "idle") {
@@ -75,7 +86,7 @@ export function HomePage() {
     setCompileErrors([]);
     compileErrorsRef.current = [];
 
-    const token = await getAccessToken();
+    const token = await getFreshAccessToken();
     if (!token) {
       setToolbarStatus("> Sessao expirada — faca login novamente");
       setRunState("idle");
@@ -83,13 +94,12 @@ export function HomePage() {
     }
 
     try {
-      await verifyAuth();
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Falha ao verificar sessao";
-      const hint = message.includes("fetch")
-        ? "Backend indisponivel — suba: cd backend && python app.py"
-        : message;
+      const health = await fetch("/api/health");
+      if (!health.ok) {
+        throw new Error("Backend indisponivel");
+      }
+    } catch {
+      const hint = "Backend indisponivel — suba: cd backend && python app.py";
       setToolbarStatus(`> ${hint}`);
       terminalRef.current?.clear();
       terminalRef.current?.writeln(`> ${hint}`);
@@ -116,6 +126,7 @@ export function HomePage() {
       onAsmGenerated: (asm) => {
         setCompileErrors([]);
         setNasmCode(asm);
+        setRunState("executing");
       },
       onExecStarted: () => {
         setRunState("executing");
@@ -124,10 +135,17 @@ export function HomePage() {
       onStdout: (data) => {
         terminalRef.current?.write(data);
       },
-      onExit: (code, durationMs) => {
-        terminalRef.current?.writeln(
-          `\r\n> fim (code=${code}, ${durationMs}ms)`,
-        );
+      onExit: (code, durationMs, stopped) => {
+        if (stopped) {
+          terminalRef.current?.writeln(
+            `\r\n> interrompido (code=${code}, ${durationMs}ms)`,
+          );
+        } else {
+          terminalRef.current?.writeln(
+            `\r\n> fim (code=${code}, ${durationMs}ms)`,
+          );
+        }
+        setToolbarStatus(null);
         finishRun();
       },
       onTimeout: (limitS) => {
@@ -135,12 +153,22 @@ export function HomePage() {
         finishRun();
       },
       onInternalError: (message) => {
-        setToolbarStatus(`> ${message}`);
-        terminalRef.current?.writeln(`> ${message}`);
+        const lower = message.toLowerCase();
+        const isAuthError =
+          lower.includes("token invalido") ||
+          lower.includes("token expirado") ||
+          lower.includes("nao autenticado");
+        const hint = isAuthError
+          ? "Sessao expirada — clique SAIR e entre de novo"
+          : message;
+        setToolbarStatus(`> ${hint}`);
+        terminalRef.current?.writeln(`> ${hint}`);
         finishRun();
       },
       onDisconnected: () => {
-        finishRun();
+        if (runState !== "idle") {
+          finishRun();
+        }
       },
     });
 
@@ -178,6 +206,7 @@ export function HomePage() {
         <IdeToolbar
           runState={runState}
           onRun={handleRun}
+          onStop={handleStop}
           statusMessage={toolbarStatus}
         />
       }

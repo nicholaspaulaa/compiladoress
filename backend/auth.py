@@ -7,6 +7,9 @@ from jwt.exceptions import InvalidTokenError
 
 from config import Config
 
+# Tolerancia de relogio entre cliente e servidor (segundos).
+_JWT_LEEWAY_S = 60
+
 
 def _unauthorized(message: str):
     return jsonify({"error": "unauthorized", "message": message}), 401
@@ -20,32 +23,53 @@ def _jwks_client() -> PyJWKClient | None:
     return PyJWKClient(jwks_url, cache_keys=True)
 
 
-def _decode_supabase_token(token: str) -> dict:
-    """Valida JWT do Supabase (HS256 legado ou ES256/RS256 via JWKS)."""
-    header = jwt.get_unverified_header(token)
-    algorithm = header.get("alg", "HS256")
+def _decode_via_jwks(token: str, algorithm: str) -> dict:
+    client = _jwks_client()
+    if client is None:
+        raise InvalidTokenError("SUPABASE_URL nao configurado para JWKS")
+    signing_key = client.get_signing_key_from_jwt(token)
+    return jwt.decode(
+        token,
+        signing_key.key,
+        algorithms=[algorithm],
+        audience="authenticated",
+        leeway=_JWT_LEEWAY_S,
+    )
 
-    if algorithm in ("ES256", "RS256"):
-        client = _jwks_client()
-        if client is None:
-            raise InvalidTokenError("SUPABASE_URL nao configurado para JWKS")
-        signing_key = client.get_signing_key_from_jwt(token)
-        return jwt.decode(
-            token,
-            signing_key.key,
-            algorithms=[algorithm],
-            audience="authenticated",
-        )
 
+def _decode_via_hs256(token: str) -> dict:
     if not Config.SUPABASE_JWT_SECRET:
         raise InvalidTokenError("SUPABASE_JWT_SECRET nao configurado")
-
     return jwt.decode(
         token,
         Config.SUPABASE_JWT_SECRET,
         algorithms=["HS256"],
         audience="authenticated",
+        leeway=_JWT_LEEWAY_S,
     )
+
+
+def _decode_supabase_token(token: str) -> dict:
+    """Valida JWT do Supabase (ES256/RS256 via JWKS ou HS256 legado)."""
+    header = jwt.get_unverified_header(token)
+    algorithm = header.get("alg", "HS256")
+    errors: list[InvalidTokenError] = []
+
+    if algorithm in ("ES256", "RS256"):
+        try:
+            return _decode_via_jwks(token, algorithm)
+        except InvalidTokenError as exc:
+            errors.append(exc)
+
+    if Config.SUPABASE_JWT_SECRET:
+        try:
+            return _decode_via_hs256(token)
+        except InvalidTokenError as exc:
+            errors.append(exc)
+
+    if errors:
+        raise errors[-1]
+    raise InvalidTokenError("Token invalido")
 
 
 def verify_jwt(f):

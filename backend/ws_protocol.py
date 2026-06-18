@@ -99,7 +99,7 @@ class WsRunSession:
             return
 
         if msg_type == "stop":
-            if self.state != WsState.EXECUTING or self.bridge is None or not self.bridge.active:
+            if self.state != WsState.EXECUTING or self.bridge is None:
                 logger.warning("WS stop ignorado em %s user_id=%s", self.state.value, self.user_id)
                 return
             self.bridge.enqueue({"type": "stop"})
