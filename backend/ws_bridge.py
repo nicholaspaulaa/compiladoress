@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import queue
 import threading
 import time
@@ -15,7 +14,6 @@ from execution import ExecutionResult, ExecutionStrategy, PtyExecutionStrategy, 
 from metrics import record_execution
 from structured_logging import get_logger, hash_user_id
 
-logger = logging.getLogger(__name__)
 log = get_logger("simples.executor")
 
 SendJson = Callable[[dict], None]
@@ -45,9 +43,10 @@ class WsPtyBridge:
         """ws_to_pty: enfileira mensagens do cliente (stdin, stop)."""
         msg_type = message.get("type")
         if not self.active and msg_type != "stop":
-            logger.warning(
-                "WS mensagem ignorada fora de EXECUTING: type=%s",
-                msg_type,
+            log.warning(
+                "ws_bridge_message_ignored",
+                user_id_hash=self._user_id_hash,
+                message_type=msg_type,
             )
             return
         self._inbound.put(message)
@@ -80,7 +79,6 @@ class WsPtyBridge:
             "exec_start",
             user_id_hash=self._user_id_hash,
             channel="ws",
-            binary_dir=binary_dir,
         )
         self._send_json({"type": "exec_started"})
         started = time.monotonic()
@@ -122,7 +120,6 @@ class WsPtyBridge:
                 error=str(exc),
                 exc_info=True,
             )
-            logger.exception("Falha na execucao PTY user-facing")
             message = format_docker_error(exc)
             self._send_json({"type": "internal_error", "message": message})
             record_execution(
