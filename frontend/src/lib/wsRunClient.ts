@@ -39,6 +39,7 @@ function dispatchMessage(
       break;
     }
     case "asm_generated":
+      setExecuting(true);
       handlers.onAsmGenerated(raw.asm);
       break;
     case "exec_started":
@@ -159,7 +160,7 @@ export function createWsRunConnection(
       pendingCompileCode = code;
     },
     sendStdin(data: string) {
-      if (!this.canSendStdin) {
+      if (ws?.readyState !== WebSocket.OPEN || runSettled) {
         return;
       }
       sendJson({ type: "stdin", data });

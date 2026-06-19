@@ -7,8 +7,9 @@ from jwt.exceptions import InvalidTokenError
 
 from config import Config
 
-# Tolerancia de relogio entre cliente e servidor (segundos).
-_JWT_LEEWAY_S = 60
+# Tolerancia de relogio entre cliente, Supabase e Docker (segundos).
+# Docker Desktop no Windows costuma ficar ~1-2 min atrasado vs o host.
+_JWT_LEEWAY_S = 120
 
 
 def _unauthorized(message: str):

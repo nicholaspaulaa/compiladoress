@@ -43,6 +43,19 @@ export function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    (window as unknown as { __e2eSetCode?: (next: string) => void }).__e2eSetCode =
+      (next: string) => {
+        setCode(next);
+        setCompileErrors([]);
+        setToolbarStatus(null);
+      };
+    return () => {
+      delete (window as unknown as { __e2eSetCode?: (next: string) => void })
+        .__e2eSetCode;
+    };
+  }, []);
+
   async function handleSignOut() {
     wsRef.current?.close();
     wsRef.current = null;
@@ -85,6 +98,7 @@ export function HomePage() {
     setToolbarStatus(null);
     setCompileErrors([]);
     compileErrorsRef.current = [];
+    (window as unknown as { __e2eExecReady?: boolean }).__e2eExecReady = false;
 
     const token = await getFreshAccessToken();
     if (!token) {
@@ -130,6 +144,9 @@ export function HomePage() {
       },
       onExecStarted: () => {
         setRunState("executing");
+        (
+          window as unknown as { __e2eExecReady?: boolean }
+        ).__e2eExecReady = true;
         terminalRef.current?.focus();
       },
       onStdout: (data) => {
@@ -154,13 +171,16 @@ export function HomePage() {
       },
       onInternalError: (message) => {
         const lower = message.toLowerCase();
-        const isAuthError =
+        let hint = message;
+        if (lower.includes("token expirado")) {
+          hint = "Sessao expirada — faca login novamente";
+        } else if (
           lower.includes("token invalido") ||
-          lower.includes("token expirado") ||
-          lower.includes("nao autenticado");
-        const hint = isAuthError
-          ? "Sessao expirada — clique SAIR e entre de novo"
-          : message;
+          lower.includes("nao autenticado")
+        ) {
+          hint =
+            "Token rejeitado pelo servidor — clique SAIR e entre de novo. Se persistir, confira SUPABASE_JWT_SECRET no .env.";
+        }
         setToolbarStatus(`> ${hint}`);
         terminalRef.current?.writeln(`> ${hint}`);
         finishRun();

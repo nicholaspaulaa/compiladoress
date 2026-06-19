@@ -86,10 +86,21 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>
 
       terminalRef.current = terminal;
       fitAddonRef.current = fitAddon;
+      (window as unknown as { __xtermTerminal?: Terminal }).__xtermTerminal =
+        terminal;
+      (
+        window as unknown as { __e2eSendStdin?: (data: string) => void }
+      ).__e2eSendStdin = (data: string) => {
+        onInputRef.current?.(data);
+      };
 
       return () => {
         resizeObserver.disconnect();
         dataDisposable.dispose();
+        delete (window as unknown as { __xtermTerminal?: Terminal })
+          .__xtermTerminal;
+        delete (window as unknown as { __e2eSendStdin?: (data: string) => void })
+          .__e2eSendStdin;
         terminal.dispose();
         terminalRef.current = null;
         fitAddonRef.current = null;

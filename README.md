@@ -171,6 +171,27 @@ cd backend && make test-new
 python -m pytest tests/test_sandbox_security.py -v
 ```
 
+### Testes E2E (Playwright — issue #40)
+
+Requer stack completa e usuario de teste no Supabase Auth.
+
+```bash
+# 1. Subir stack (rebuild se mudou o frontend)
+docker compose up --build
+
+# 2. Credenciais em e2e/.env (copie e2e/.env.example)
+#    E2E_TEST_EMAIL=...
+#    E2E_TEST_PASSWORD=...
+
+# 3. Rodar (suite leva ~1 min quando tudo OK)
+cd e2e
+npm test
+```
+
+Cenarios cobertos: login, Run + NASM, stdin (`leia`), Stop e timeout (**10s**, conforme `EXEC_TIMEOUT_S` padrao).
+
+No CI (GitHub Actions), configure os secrets: `SUPABASE_*`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`.
+
 ---
 
 ## Screenshots
