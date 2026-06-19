@@ -170,7 +170,6 @@ cd backend && make test-new
 # Testes de segurança do sandbox (24 testes)
 python -m pytest tests/test_sandbox_security.py -v
 ```
-
 ---
 
 ## Screenshots
@@ -180,13 +179,21 @@ python -m pytest tests/test_sandbox_security.py -v
 
 | Funcionalidade | Screenshot |
 |----------------|------------|
-| **Tela de login** com Supabase Auth | ![Login](./docs/screenshots/01-login.png) |
-| **Editor + NASM** após compilar código SIMPLES | ![Editor + NASM](./docs/screenshots/02-editor-nasm.png) |
-| **Terminal interativo** com execução (`leia`/`escreva`) | ![Terminal](./docs/screenshots/03-terminal-execution.png) |
+| **Tela de login** com Supabase Auth |
+<img width="1899" height="941" alt="image" src="https://github.com/user-attachments/assets/93f68a96-f693-45e7-8942-1ae6e7e418c0" />
 
-### Fluxo completo (GIF)
+| **Editor + NASM** após compilar código SIMPLES |
+<img width="1905" height="898" alt="image" src="https://github.com/user-attachments/assets/a1b0ba7c-630f-4038-a07f-47b15d5da362" />
 
-![Fluxo completo](./docs/screenshots/00-full-flow.gif)
+| **Terminal interativo** com execução (`leia`/`escreva`) |
+<img width="918" height="901" alt="image" src="https://github.com/user-attachments/assets/1fbe7518-bc02-4970-a922-a5067ca71957" />
+
+| **Testes feitos** |
+<img width="1090" height="227" alt="image" src="https://github.com/user-attachments/assets/6988f788-7c96-4e97-a432-9e6ff90c6e79" />
+
+
+
+### Fluxo completo (está em video)
 
 *Login → escrever código → compilar → ver NASM → executar no terminal*
 
