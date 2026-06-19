@@ -174,13 +174,8 @@ python -m pytest tests/test_sandbox_security.py -v
 
 ## Screenshots
 
-> **Para a equipe**: capture screenshots/GIFs e salve em `docs/screenshots/`.
-> Instruções detalhadas em [docs/screenshots/README.md](./docs/screenshots/README.md).
-
-| Funcionalidade | Screenshot |
-|----------------|------------|
 | **Tela de login** com Supabase Auth |
-<img width="1899" height="941" alt="image" src="https://github.com/user-attachments/assets/93f68a96-f693-45e7-8942-1ae6e7e418c0" />
+<img width="1904" height="897" alt="image" src="https://github.com/user-attachments/assets/15101ff5-5ae8-4287-9f80-2171bf1e5897" />
 
 | **Editor + NASM** após compilar código SIMPLES |
 <img width="1905" height="898" alt="image" src="https://github.com/user-attachments/assets/a1b0ba7c-630f-4038-a07f-47b15d5da362" />
