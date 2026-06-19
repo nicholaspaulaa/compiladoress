@@ -25,7 +25,30 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(supabaseUrl && supabaseAnonKey);
 }
 
-/** Retorna access_token da sessao atual; renova so se ja expirou. */
+/** Renova proativamente quando faltam <=5 min para expirar (PRD §12). */
+const REFRESH_MARGIN_S = 300;
+
+function accessTokenExpiresAt(session: {
+  expires_at?: number;
+  access_token: string;
+}): number {
+  if (session.expires_at && session.expires_at > 0) {
+    return session.expires_at;
+  }
+
+  try {
+    const payload = JSON.parse(
+      atob(
+        session.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"),
+      ),
+    ) as { exp?: number };
+    return payload.exp ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Retorna access_token valido; renova antes de expirar. Nunca devolve token expirado. */
 export async function getFreshAccessToken(): Promise<string | null> {
   const {
     data: { session },
@@ -37,16 +60,29 @@ export async function getFreshAccessToken(): Promise<string | null> {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const expiresAt = session.expires_at ?? 0;
+  const expiresAt = accessTokenExpiresAt(session);
 
-  // Token ainda valido — usa direto (autoRefreshToken cuida da renovacao em background)
-  if (expiresAt <= 0 || expiresAt > now + 30) {
+  if (expiresAt > now + REFRESH_MARGIN_S) {
     return session.access_token;
   }
 
-  // Expirando em breve ou ja expirou — tenta renovar uma vez, sem deslogar
-  const { data: refreshed } = await supabase.auth.refreshSession();
-  return refreshed.session?.access_token ?? session.access_token;
+  const { data: refreshed, error: refreshError } =
+    await supabase.auth.refreshSession();
+  const nextToken = refreshed.session?.access_token;
+  if (nextToken) {
+    return nextToken;
+  }
+
+  if (refreshError) {
+    console.warn("Supabase refreshSession:", refreshError.message);
+  }
+
+  // Rede falhou mas o token ainda nao expirou — tenta usar uma vez
+  if (expiresAt > now) {
+    return session.access_token;
+  }
+
+  return null;
 }
 
 export async function getAccessToken(): Promise<string | null> {

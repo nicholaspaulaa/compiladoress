@@ -82,7 +82,7 @@ garante isolamento e segurança para execução multi-tenant.
 
 | Arquivo | Conteúdo |
 |---------|----------|
-| [prd-simples-online.md](./prd-simples-online.md) | PRD completo — requisitos, arquitetura, API, segurança |
+| [prd-simples-editor.md](./prd-simples-editor.md) | PRD completo — requisitos, arquitetura, API, segurança |
 | [SPRINTS.md](./SPRINTS.md) | Plano de 6 sprints e entregáveis |
 | [PROGRESS.md](./PROGRESS.md) | Checklist das issues do GitHub |
 | [docs/SUPABASE.md](./docs/SUPABASE.md) | Criar projeto Supabase e variáveis `.env` |
@@ -170,6 +170,28 @@ cd backend && make test-new
 # Testes de segurança do sandbox (24 testes)
 python -m pytest tests/test_sandbox_security.py -v
 ```
+
+### Testes E2E (Playwright — issue #40)
+
+Requer stack completa e usuario de teste no Supabase Auth.
+
+```bash
+# 1. Subir stack (rebuild se mudou o frontend)
+docker compose up --build
+
+# 2. Credenciais em e2e/.env (copie e2e/.env.example)
+#    E2E_TEST_EMAIL=...
+#    E2E_TEST_PASSWORD=...
+
+# 3. Rodar (suite leva ~1 min quando tudo OK)
+cd e2e
+npm test
+```
+
+Cenarios cobertos: login, Run + NASM, stdin (`leia`), Stop e timeout (**10s**, conforme `EXEC_TIMEOUT_S` padrao).
+
+No CI (GitHub Actions), configure os secrets: `SUPABASE_*`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`.
+
 ---
 
 ## Screenshots
@@ -205,7 +227,7 @@ python -m pytest tests/test_sandbox_security.py -v
 | WebSocket `/ws/run` fecha com 4403 | Token JWT inválido/expirado | Faça login novamente; verifique `SUPABASE_JWT_SECRET` |
 | `simples-runner` não constrói | Falta `qemu-user-static` | `docker compose build runner_image_build` |
 | Erro `docker.errors.NotFound: simples-runner:latest` | Imagem não foi construída | `docker compose up --build` (constrói todas as imagens) |
-| Erro 429 ao compilar | Rate limit excedido (30/min) | Aguarde 1 minuto; ver [PRD §6.2](./prd-simples-online.md#62-segurança) |
+| Erro 429 ao compilar | Rate limit excedido (30/min) | Aguarde 1 minuto; ver [PRD §6.2](./prd-simples-editor.md#62-segurança) |
 | Testes falham com `ImportError` | Dependências não instaladas | `cd backend && uv pip install -r requirements.txt` (ou `pip install`) |
 
 ---

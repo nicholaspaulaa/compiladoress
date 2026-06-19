@@ -552,7 +552,9 @@ create policy "users see only their executions"
 
 - Usuário autentica via Supabase no frontend (email + senha em v1, magic link opcional).
 - Frontend recebe JWT (`access_token`) e o envia em **toda** request REST e no handshake do WebSocket.
-- Backend valida o JWT usando o `JWT_SECRET` do Supabase (não consulta banco — performance).
+- Backend valida o JWT via **JWKS** (ES256/RS256, projetos Supabase atuais) ou **HS256** legado (`SUPABASE_JWT_SECRET`).
+- Tolerância de relógio (**leeway**): **120s** entre cliente, Supabase e containers Docker — necessário no Docker Desktop (Windows/macOS), onde o relógio do VM pode ficar ~1 min atrás do host e rejeitar tokens recém-emitidos.
+- Frontend renova o `access_token` proativamente até **5 minutos** antes de expirar (`getFreshAccessToken`); nunca envia token já expirado ao WebSocket.
 - `user_id` extraído de `sub` do JWT é o identificador canônico para rate limiting e logs.
 
 ### 11.2 Sandboxing por execução
@@ -1205,11 +1207,30 @@ Cada log line do backend é um JSON com campos fixos:
 - Componente do terminal — recebe stdout, envia stdin.
 - Hook de WebSocket — reconecta, transiciona estados corretamente.
 
-### 17.3 E2E (Playwright — v1.1)
+### 17.3 E2E (Playwright — Sprint 6, issue #40)
 
-- Login → editar exemplo → Run → ver output esperado.
-- Stop interrompe.
-- Timeout encerra após 10s.
+Suite em `e2e/` contra a stack completa (`docker compose up`, http://localhost). Requer usuário de teste no Supabase Auth (`E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`).
+
+| Cenário | Spec | O que valida |
+|---|---|---|
+| Login | `login.spec.ts` | Credenciais de teste → redireciona para `/`, botão Run visível |
+| Run + NASM | `run.spec.ts` | Editar código SIMPLES, Run, painel NASM contém assembly gerado (`print_int`) |
+| Stdin (`leia`) | `stdin.spec.ts` | Programa demo `leia x; escreval x` recebe `42` e imprime no terminal |
+| Stop | `stop.spec.ts` | Stop interrompe execução aguardando `leia` (`interrompido` no terminal) |
+| Timeout | `timeout.spec.ts` | Loop infinito → mensagem `timeout (10s)` (`EXEC_TIMEOUT_S=10`) |
+
+**CI**: workflow `.github/workflows/e2e.yml` (PR em `main`, `workflow_dispatch`). Secrets: `SUPABASE_*`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`.
+
+**Hooks mínimos no frontend** (sem impacto na UX; usados só pelos testes):
+
+- `data-testid` em Run/Stop
+- `window.__e2eSetCode` — define código no state React (Monaco não sincroniza paste E2E)
+- `window.__e2eSendStdin` — envia stdin pelo mesmo handler do xterm (evita delay de teclado vs timeout 10s)
+- `window.__e2eExecReady` — `true` após mensagem `exec_started` (stdin só após sandbox ativo)
+
+**Nota sobre stdin e timeout**: o wall-clock de **10s** conta enquanto o programa espera em `leia`. Os testes enviam stdin assim que `exec_started` dispara, não após digitação lenta no teclado.
+
+**Definition of Done (issue #40)**: `cd e2e && npm test` → 6/6 verdes com stack no ar; workflow E2E verde no PR.
 
 ### 17.4 Compilador SIMPLES
 
@@ -1232,7 +1253,7 @@ Já testado com Unity (TDD existente, ver [PRD do compilador](https://www.notion
 
 - Logs estruturados + métricas Prometheus.
 - Documentação para alunos.
-- Testes E2E (Playwright).
+- Testes E2E (Playwright) — **implementado** (issue #40): login, run/NASM, stdin, stop, timeout 10s.
 - Deploy em staging na **Oracle Cloud Ampere A1** (Ubuntu 22.04 ARM64) — validação de qemu-user + cross-toolchain em ambiente real.
 - Coleta de feedback piloto (1 turma).
 
@@ -1256,7 +1277,8 @@ Já testado com Unity (TDD existente, ver [PRD do compilador](https://www.notion
 | Spawn de container lento (> 1s) | Média | Médio | v2: pool pré-aquecido. v1: comunicar latência ao usuário ("preparando ambiente...") |
 | **Overhead de emulação x86 em ARM (qemu-user)** | **Alta** | **Baixo** | **Esperado para todos os hosts ARM. Calibrar `EXEC_TIMEOUT_S=15` em produção. Programas didáticos típicos têm latência adicional < 50ms — imperceptível.** |
 | Bug no compilador `simplesc` | Média | Médio | Já tem TDD — capturar stderr e mostrar como `compile_error` em vez de derrubar a sessão |
-| JWT do Supabase expira mid-execution | Alta | Baixo | WebSocket aceita reconexão; refresh token automático no client |
+| JWT do Supabase expira mid-execution | Alta | Baixo | WebSocket aceita reconexão; refresh token automático no client; `getFreshAccessToken` renova 5 min antes de expirar |
+| Relógio Docker desincronizado (JWT rejeitado) | Média | Médio | `JWT leeway=120s` no backend; tokens ES256 via JWKS; mensagens distintas para expirado vs inválido |
 | Custos cloud (OCI/Supabase) | Baixa | Baixo | OCI Ampere A1 é Always Free permanente (4 OCPU/24GB). Supabase free tier suporta o piloto. Alarmes de billing como rede de segurança. |
 | Aluno digita código gigante (DoS) | Média | Baixo | Limite de 64 KB no frontend e validação no backend |
 | Container não é destruído (leak) | Baixa | Alto | `docker run --rm` + cron de limpeza diário (`docker container prune --filter ...`) |

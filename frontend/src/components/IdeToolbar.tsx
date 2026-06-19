@@ -38,6 +38,7 @@ export function IdeToolbar({
         disabled={isBusy}
         className="retro-btn retro-btn-sm ide-toolbar__run"
         aria-busy={isBusy}
+        data-testid="ide-run-btn"
       >
         {isBusy ? (
           <>
@@ -54,6 +55,7 @@ export function IdeToolbar({
         disabled={!canStop}
         className="retro-btn retro-btn-sm retro-btn-outline ide-toolbar__stop"
         aria-label="Parar execucao"
+        data-testid="ide-stop-btn"
       >
         [ STOP ]
       </button>
