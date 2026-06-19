@@ -82,7 +82,7 @@ garante isolamento e segurança para execução multi-tenant.
 
 | Arquivo | Conteúdo |
 |---------|----------|
-| [prd-simples-online.md](./prd-simples-online.md) | PRD completo — requisitos, arquitetura, API, segurança |
+| [prd-simples-editor.md](./prd-simples-editor.md) | PRD completo — requisitos, arquitetura, API, segurança |
 | [SPRINTS.md](./SPRINTS.md) | Plano de 6 sprints e entregáveis |
 | [PROGRESS.md](./PROGRESS.md) | Checklist das issues do GitHub |
 | [docs/SUPABASE.md](./docs/SUPABASE.md) | Criar projeto Supabase e variáveis `.env` |
@@ -196,18 +196,21 @@ No CI (GitHub Actions), configure os secrets: `SUPABASE_*`, `E2E_TEST_EMAIL`, `E
 
 ## Screenshots
 
-> **Para a equipe**: capture screenshots/GIFs e salve em `docs/screenshots/`.
-> Instruções detalhadas em [docs/screenshots/README.md](./docs/screenshots/README.md).
+| **Tela de login** com Supabase Auth |
+<img width="1904" height="897" alt="image" src="https://github.com/user-attachments/assets/15101ff5-5ae8-4287-9f80-2171bf1e5897" />
 
-| Funcionalidade | Screenshot |
-|----------------|------------|
-| **Tela de login** com Supabase Auth | ![Login](./docs/screenshots/01-login.png) |
-| **Editor + NASM** após compilar código SIMPLES | ![Editor + NASM](./docs/screenshots/02-editor-nasm.png) |
-| **Terminal interativo** com execução (`leia`/`escreva`) | ![Terminal](./docs/screenshots/03-terminal-execution.png) |
+| **Editor + NASM** após compilar código SIMPLES |
+<img width="1905" height="898" alt="image" src="https://github.com/user-attachments/assets/a1b0ba7c-630f-4038-a07f-47b15d5da362" />
 
-### Fluxo completo (GIF)
+| **Terminal interativo** com execução (`leia`/`escreva`) |
+<img width="918" height="901" alt="image" src="https://github.com/user-attachments/assets/1fbe7518-bc02-4970-a922-a5067ca71957" />
 
-![Fluxo completo](./docs/screenshots/00-full-flow.gif)
+| **Testes feitos** |
+<img width="1090" height="227" alt="image" src="https://github.com/user-attachments/assets/6988f788-7c96-4e97-a432-9e6ff90c6e79" />
+
+
+
+### Fluxo completo (está em video)
 
 *Login → escrever código → compilar → ver NASM → executar no terminal*
 
@@ -224,7 +227,7 @@ No CI (GitHub Actions), configure os secrets: `SUPABASE_*`, `E2E_TEST_EMAIL`, `E
 | WebSocket `/ws/run` fecha com 4403 | Token JWT inválido/expirado | Faça login novamente; verifique `SUPABASE_JWT_SECRET` |
 | `simples-runner` não constrói | Falta `qemu-user-static` | `docker compose build runner_image_build` |
 | Erro `docker.errors.NotFound: simples-runner:latest` | Imagem não foi construída | `docker compose up --build` (constrói todas as imagens) |
-| Erro 429 ao compilar | Rate limit excedido (30/min) | Aguarde 1 minuto; ver [PRD §6.2](./prd-simples-online.md#62-segurança) |
+| Erro 429 ao compilar | Rate limit excedido (30/min) | Aguarde 1 minuto; ver [PRD §6.2](./prd-simples-editor.md#62-segurança) |
 | Testes falham com `ImportError` | Dependências não instaladas | `cd backend && uv pip install -r requirements.txt` (ou `pip install`) |
 
 ---
